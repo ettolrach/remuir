@@ -1,0 +1,17 @@
+WHITESPACE = _{ " " | "\t" }
+
+instruction = { "inc" | "decjz" }
+
+register = { ASCII_DIGIT }
+
+register_line = { "registers" ~ (register)+ }
+
+label_char = _{ !(":" | instruction) ~ ANY }
+
+label = { label_char* ~ ":" }
+
+args = { ASCII_ALPHANUMERIC+ }
+
+instruction_line = { label? ~ instruction ~ args* }
+
+file = { SOI ~ register_line? ~ (NEWLINE ~ instruction_line)+ ~ NEWLINE* ~ EOI}
