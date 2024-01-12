@@ -15,9 +15,6 @@ impl Register {
     pub fn new(registers: &[u128]) -> Register {
         Register(Vec::from(registers))
     }
-    pub fn new_from_iterator(iter: impl Iterator<Item = u128>) -> Register {
-        Register(Vec::from_iter(iter))
-    }
     pub fn new_from_u128(value: u128) -> Register {
         Register(vec![value])
     }
@@ -71,7 +68,7 @@ impl Register {
         }
     }
     fn is_zero(&self) -> bool {
-        (self.0.len() == 0) || (self.0.len() == 1 && self.0[0] == 0)
+        (self.0.is_empty()) || (self.0.len() == 1 && self.0[0] == 0)
     }
     fn get_u128(&self) -> u128 {
         match self.0.len() {
@@ -92,6 +89,9 @@ impl Memory {
     }
     pub fn new_from_slice(registers: &[Register]) -> Memory {
         Memory { registers: Vec::from(registers) }
+    }
+    pub fn new_from_iterator(iter: impl Iterator<Item = Register>) -> Memory {
+        Memory { registers: Vec::from_iter(iter) }
     }
     pub fn create_new_registers(&mut self, to: usize) {
         for _ in self.registers.len()..to {
@@ -134,6 +134,11 @@ impl Memory {
         to_return
     }
 }
+impl Default for Memory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Identifier {
@@ -173,13 +178,13 @@ impl FromStr for RegisterNumber {
             return Err(RegisterParseError::MissingR)
         }
         if &s[1..2] == "-" {
-            match (&s[2..s.len()]).parse::<usize>() {
+            match (s[2..s.len()]).parse::<usize>() {
                 Ok(num) => Ok(Self::Negative(num)),
                 Err(e) => Err(RegisterParseError::NotInt(e)),
             }
         }
         else {
-            match (&s[1..s.len()]).parse::<usize>() {
+            match (s[1..s.len()]).parse::<usize>() {
                 Ok(num) => Ok(Self::Natural(num)),
                 Err(e) => Err(RegisterParseError::NotInt(e)),
             }
@@ -229,16 +234,11 @@ impl Program {
         }
     }
     pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Program {
-        let mut lines_vec: Vec<Line> = Vec::from(lines_slice);
+        let lines_vec: Vec<Line> = Vec::from(lines_slice);
         let mut labels_map = HashMap::new();
         for l in &lines_vec {
-            if l.id.is_some() {
-                match &l.id {
-                    Some(Identifier::Label(s)) => {
-                        labels_map.insert(s.to_string(), l.line_number);
-                    },
-                    _ => (),
-                }
+            if let Some(Identifier::Label(s)) = &l.id {
+                labels_map.insert(s.to_string(), l.line_number);
             }
         }
         Program {
@@ -260,7 +260,7 @@ impl Program {
     }
 
     pub fn execute(&mut self) {
-        if self.lines.len() == 0 {
+        if self.lines.is_empty() {
             return;
         }
         while self.current_line < self.lines.len() as LineNumber {
@@ -315,10 +315,15 @@ impl Program {
 
         let register_vec = self.natural_memory.get_registers_as_u128();
         for n in register_vec {
-            to_return.push_str(" ");
+            to_return.push(' ');
             to_return.push_str(&n.to_string());
         }
         to_return
+    }
+}
+impl Default for Program {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -328,16 +333,15 @@ where
 {
     let mut program_lines: Vec<Line> = Vec::new();
     let mut initial_registers: Vec<Register> = Vec::new();
-    let mut label_hashmap: HashMap<String, LineNumber> = HashMap::new();
 
-    let mut lines = input.lines().into_iter();
+    let mut lines = input.lines();
 
     // Deal with the first line, fill initial registers.
     let first_line = lines.next().ok_or(io::Error::from(io::ErrorKind::UnexpectedEof))??;
     if &first_line[0..9] != "registers" {
         return Err(io::Error::new(io::ErrorKind::Other, "The first word is not \"registers\"."));
     }
-    let initial_values: Vec<&str> = (&first_line[9..first_line.len()]).split_whitespace().collect();
+    let initial_values: Vec<&str> = (first_line[9..first_line.len()]).split_whitespace().collect();
     for s in initial_values {
         let r = match s.parse::<u128>() {
             Ok(a) => a,
@@ -377,16 +381,15 @@ where
         if instruction_vec.len() > 3 || instruction_vec.len() < 2 {
             todo!()
         }
-        let instruction: Instruction;
-        let reg: RegisterNumber;
+
         // Parse the relevant instruction and save the corresponding register numbers.
-        match instruction_vec[0] {
+        let instruction: Instruction = match instruction_vec[0] {
             "inc" => {
                 let reg: RegisterNumber = match RegisterNumber::from_str(instruction_vec[1]) {
                     Ok(r) => r,
                     Err(_) => return Err(io::Error::new(io::ErrorKind::Other, "Invalid register size (must be less than 2^128)"))
                 };
-                instruction = Instruction::INC(reg);
+                Instruction::INC(reg)
             },
             "decjz" => {
                 let reg: RegisterNumber = match RegisterNumber::from_str(instruction_vec[1]) {
@@ -395,7 +398,7 @@ where
                 };
                 let ident: Identifier = Identifier::from_str(instruction_vec[2]).expect("Conversion is infallible.");
                 
-                instruction = Instruction::DECJZ(reg, ident)
+                Instruction::DECJZ(reg, ident)
             },
             _ => todo!()
         };

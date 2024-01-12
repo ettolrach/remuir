@@ -1,10 +1,14 @@
-use std::io;
-use rmsim::*;
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut program = read_input(io::stdin().lock())?;
+use std::io::{self, Read};
+use rmsim::parser::parse_str;
+
+fn main() -> std::io::Result<()> {
+    let mut buffer = String::new();
+    io::stdin().read_to_string(&mut buffer)?;
+    let mut program = parse_str(&buffer).unwrap();
     program.execute();
     let output = program.get_state();
-    print!("{}\n", output);
+    println!("{output}");
     Ok(())
 }

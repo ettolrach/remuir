@@ -4,9 +4,22 @@ fn example1_string() -> String {
     String::from("registers 1 2 3
 inc r4
 some_label: decjz r0 HALT
-decjz -1 some_label")
+decjz r-1 some_label")
 }
 fn example1_program() -> Program {
+    let lines: Vec<Line> = vec![
+        Line::new(0, None, Instruction::INC(RegisterNumber::Natural(4))),
+        Line::new(1, Some(Identifier::Label(String::from("some_label"))), Instruction::DECJZ(RegisterNumber::Natural(0), Identifier::Halt)),
+        Line::new(2, None, Instruction::DECJZ(RegisterNumber::Negative(1), Identifier::Label(String::from("some_label")))),
+    ];
+    let memory = Memory::new_from_slice(&[
+        Register::new_from_u128(1),
+        Register::new_from_u128(2),
+        Register::new_from_u128(3),
+    ][..]);
+    Program::new_from_lines(&lines, memory)
+}
+fn example2_program() -> Program {
     let lines: Vec<Line> = vec![
         Line::new(0, Some(Identifier::Label(String::from("loop"))), Instruction::DECJZ(RegisterNumber::Natural(1), Identifier::Halt)),
         Line::new(1, None, Instruction::DECJZ(RegisterNumber::Natural(0), Identifier::Halt)),
@@ -21,7 +34,7 @@ fn example1_program() -> Program {
 
 #[test]
 fn parse_correctly() {
-    let prog = parse_str(&example1_string());
+    let prog = parse_str(&example1_string()).unwrap();
     let prog_control = example1_program();
     assert_eq!(prog, prog_control)
 }

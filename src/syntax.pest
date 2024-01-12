@@ -1,17 +1,26 @@
 WHITESPACE = _{ " " | "\t" }
+COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* ~ NEWLINE }
 
-instruction = { "inc" | "decjz" }
+label_char = _{ !(":" | NEWLINE | instruction) ~ ANY }
+label = _{ label_char+ }
+line_label = { label+ ~ ":" }
+reference_label = { label+ }
 
-register = { ASCII_DIGIT }
+register_num = @{ ASCII_DIGIT+ }
+pos_register_num = ${ ASCII_DIGIT+ }
+neg_register_num = ${ ASCII_DIGIT+ }
+positive_register = _{ pos_register_num+ }
+negative_register = _{ "-" ~ neg_register_num+ }
+register_name = _{ "r" ~ (positive_register+ | negative_register+) }
 
-register_line = { "registers" ~ (register)+ }
+// Instructions
+inc = { "inc" ~ register_name }
+decjz = { "decjz" ~ register_name ~ reference_label }
+many = { "many" ~ register_name+ }
 
-label_char = _{ !(":" | instruction) ~ ANY }
+instruction = { inc | decjz | many }
 
-label = { label_char* ~ ":" }
-
-args = { ASCII_ALPHANUMERIC+ }
-
-instruction_line = { label? ~ instruction ~ args* }
+register_line = { "registers" ~ (register_num)+ }
+instruction_line = { line_label? ~ instruction }
 
 file = { SOI ~ register_line? ~ (NEWLINE ~ instruction_line)+ ~ NEWLINE* ~ EOI}
