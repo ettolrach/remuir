@@ -1,4 +1,4 @@
-use rmsim::*;
+use remuir::*;
 
 #[test]
 fn inc_from_max_test() {

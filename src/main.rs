@@ -1,7 +1,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use std::io::{self, Read};
-use rmsim::parser::parse_str;
+use remuir::parser::parse_str;
 
 fn main() -> std::io::Result<()> {
     let mut buffer = String::new();

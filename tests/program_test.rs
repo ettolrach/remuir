@@ -1,4 +1,4 @@
-use rmsim::*;
+use remuir::*;
 
 fn get_example_program() -> Program {
     let lines: Vec<Line> = vec![

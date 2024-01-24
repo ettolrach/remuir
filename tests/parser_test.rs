@@ -1,4 +1,4 @@
-use rmsim::{*, parser::parse_str};
+use remuir::{*, parser::parse_str};
 
 fn example1_string() -> String {
     String::from("registers 1 2 3
@@ -37,4 +37,25 @@ fn parse_correctly() {
     let prog = parse_str(&example1_string()).unwrap();
     let prog_control = example1_program();
     assert_eq!(prog, prog_control)
+}
+
+#[test]
+fn new_lines() {
+    let input = String::from("
+registers 3
+
+beginning: decjz r0 even_halt
+decjz r0 odd_halt
+decjz r-1 beginning
+
+even_halt: decjz r-1 HALT
+
+odd_halt: inc r0
+decjz r-1 HALT
+");
+    let mut prog = parse_str(&input).unwrap();
+    prog.execute();
+    let output = prog.get_state();
+    let expected_output = String::from("registers 1");
+    assert_eq!(expected_output, output)
 }

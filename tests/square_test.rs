@@ -1,4 +1,4 @@
-use rmsim::*;
+use remuir::*;
 
 #[test]
 fn square() {
