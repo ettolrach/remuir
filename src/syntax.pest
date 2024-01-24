@@ -9,9 +9,9 @@ reference_label = { label+ }
 register_num = @{ ASCII_DIGIT+ }
 pos_register_num = ${ ASCII_DIGIT+ }
 neg_register_num = ${ ASCII_DIGIT+ }
-positive_register = _{ pos_register_num+ }
-negative_register = _{ "-" ~ neg_register_num+ }
-register_name = _{ "r" ~ (positive_register+ | negative_register+) }
+positive_register = _{ pos_register_num }
+negative_register = _{ "-" ~ neg_register_num }
+register_name = _{ "r" ~ (positive_register | negative_register) }
 
 // Instructions
 inc = { "inc" ~ register_name }
