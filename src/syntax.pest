@@ -23,4 +23,4 @@ instruction = { inc | decjz | many }
 register_line = { "registers" ~ (register_num)+ }
 instruction_line = { line_label? ~ instruction }
 
-file = { SOI ~ NEWLINE* ~ register_line? ~ (NEWLINE+ ~ instruction_line)+ ~ NEWLINE* ~ EOI}
+file = { SOI ~ NEWLINE* ~ register_line? ~ (NEWLINE+ ~ instruction_line)* ~ NEWLINE* ~ EOI}

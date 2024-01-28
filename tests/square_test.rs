@@ -2,7 +2,7 @@ use remuir::*;
 
 #[test]
 fn square() {
-    let source_code = b"registers 3
+    let source_code = String::from("registers 3
 # r-1 is reserved for GOTO, r-2 will have a copy of r0 in it.
 # First, copy r0 to r-2.
 1stcopy1: decjz r0 1stcopy2
@@ -60,8 +60,8 @@ finished_addition_copy: decjz r-1 increment
 
 increment: decjz r-3 addition
 inc r0
-decjz r-1 increment";
-    let mut prog: Program = read_input(&source_code[..]).unwrap();
+decjz r-1 increment");
+    let mut prog: Program = parser::parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 9")
 }

@@ -15,11 +15,11 @@ fn get_example_program() -> Program {
 
 #[test]
 fn input_parsed_correctly() {
-    let input = b"registers 10 5
+    let input = String::from("registers 10 5
 loop: decjz r1 HALT
 decjz r0 HALT
-decjz r2 loop";
-    let prog: Program = read_input(&input[..]).unwrap();
+decjz r2 loop");
+    let prog: Program = parser::parse_str(&input).unwrap();
     let control_program = get_example_program();
     assert_eq!(prog, control_program)
 }
@@ -33,54 +33,54 @@ fn decjz_executing_correctly() {
 
 #[test]
 fn copy_between_registers() {
-    let source_code = b"registers 0 3
+    let source_code = String::from("registers 0 3
 loop1: decjz r1 loop2
 inc r0
 inc r2
 decjz r3 loop1
 loop2: decjz r2 halt
 inc r1
-decjz r3 loop2";
-    let mut prog: Program = read_input(&source_code[..]).unwrap();
+decjz r3 loop2");
+    let mut prog: Program = parser::parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 3 3 0 0")
 }
 
 #[test]
 fn copy_using_negative() {
-    let source_code = b"registers 0 3
+    let source_code = String::from("registers 0 3
 loop1: decjz r1 loop2
 inc r0
 inc r-2
 decjz r-1 loop1
 loop2: decjz r-2 halt
 inc r1
-decjz r-1 loop2";
-    let mut prog: Program = read_input(&source_code[..]).unwrap();
+decjz r-1 loop2");
+    let mut prog: Program = parser::parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 3 3")
 }
 
 #[test]
 fn empty_program() {
-    let source_code = b"registers 1 2 3";
-    let mut prog: Program = read_input(&source_code[..]).unwrap();
+    let source_code = String::from("registers 1 2 3");
+    let mut prog: Program = parser::parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 1 2 3")
 }
 
 #[test]
 fn simple_increment() {
-    let source_code = b"registers 0 3
-    inc r0";
-    let mut prog: Program = read_input(&source_code[..]).unwrap();
+    let source_code = String::from("registers 0 3
+    inc r0");
+    let mut prog: Program = parser::parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 1 3")
 }
 
 #[test]
 fn empty_lines() {
-    let source_code = b"registers 0 3
+    let source_code = String::from("registers 0 3
 loop1: decjz r1 loop2
 inc r0
 
@@ -92,15 +92,15 @@ loop2: decjz r-2 halt
 inc r1
 
 
-decjz r-1 loop2";
-    let mut prog: Program = read_input(&source_code[..]).unwrap();
+decjz r-1 loop2");
+    let mut prog: Program = parser::parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 3 3")
 }
 
 #[test]
 fn commented_lines() {
-    let source_code = b"registers 0 3
+    let source_code = String::from("registers 0 3
 loop1: decjz r1 loop2
 inc r0
 # This is a comment.
@@ -108,8 +108,8 @@ inc r-2
 decjz r-1 loop1
 loop2: decjz r-2 halt
 inc r1
-decjz r-1 loop2";
-    let mut prog: Program = read_input(&source_code[..]).unwrap();
+decjz r-1 loop2");
+    let mut prog: Program = parser::parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 3 3")
 }
