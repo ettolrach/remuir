@@ -5,6 +5,8 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 pub mod parser;
+pub mod vecmap;
+use vecmap::VecMap;
 
 // This vector represents a little endian number of base 2^128.
 // So, 2^128 + 64 is vec![64, 1]
@@ -220,7 +222,7 @@ pub struct Program {
     current_line: LineNumber,
     natural_memory: Memory,
     negative_memory: Memory,
-    labels: HashMap<String, LineNumber>,
+    labels: VecMap<String, LineNumber>,
 }
 
 impl Program {
@@ -230,15 +232,15 @@ impl Program {
             current_line: 0,
             natural_memory: Memory::new(),
             negative_memory: Memory::new(),
-            labels: HashMap::new(),
+            labels: VecMap::new(),
         }
     }
     pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Program {
         let lines_vec: Vec<Line> = Vec::from(lines_slice);
-        let mut labels_map = HashMap::new();
+        let mut labels_map = VecMap::new();
         for l in &lines_vec {
             if let Some(Identifier::Label(s)) = &l.id {
-                labels_map.insert(s.to_string(), l.line_number);
+                labels_map.update(s.to_string(), l.line_number);
             }
         }
         Program {
@@ -251,7 +253,7 @@ impl Program {
     }
 
     pub fn go_to_identifier(&mut self, s: &str) {
-        match self.labels.get(s) {
+        match self.labels.get(&s.to_string()) {
             Some(line_num) => {
                 self.current_line = *line_num;
             }
