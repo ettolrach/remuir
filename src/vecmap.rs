@@ -1,11 +1,36 @@
-/* This file is part of remuir.
+/* remuir: a register machine emulator written in Rust.
+Copyright (C) 2024  Charlotte Ausel
 
-remuir is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-remuir is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with remuir. If not, see <https://www.gnu.org/licenses/>. */
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
+//! A map using a vec without hashing.
+//! 
+//! Performance should be fast for small lists where the hashing function of HashMap would unnecessarily slow down lookup.
+//! 
+//! # Examples
+//! ```
+//! use remuir::vecmap::VecMap;
+//! let mut us_presidents: VecMap<u8, String> = VecMap::from_slice(&vec![
+//!     (43, String::from("George W. Bush")),
+//!     (44, String::from("Barack Obama")),
+//!     (45, String::from("Donald Trump")),
+//!     (46, String::from("Joe Biden")),
+//! ]);
+//! assert_eq!(None, us_presidents.get(&42));
+//! us_presidents.update(42, String::from("Bill Clinton"));
+//! assert_eq!("Bill Clinton", us_presidents.get(&42).unwrap());
+//! ```
 #[derive(Default, Debug, PartialEq)]
 pub struct VecMap<K, V> {
     pub vec: Vec<(K, V)>
@@ -68,5 +93,22 @@ impl<K, V> VecMap<K, V> {
     }
     pub fn values(&self) -> Vec<&V> {
         self.vec.iter().map(|tuple| &tuple.1).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::vecmap::VecMap;
+    #[test]
+    fn simple_update() {
+        let mut us_presidents: VecMap<u8, String> = VecMap::from_slice(&vec![
+            (43, String::from("George W. Bush")),
+            (44, String::from("Barack Obama")),
+            (45, String::from("Donald Trump")),
+            (46, String::from("Joe Biden")),
+        ]);
+        assert_eq!(None, us_presidents.get(&42));
+        us_presidents.update(42, String::from("Bill Clinton"));
+        assert_eq!("Bill Clinton", us_presidents.get(&42).unwrap());
     }
 }

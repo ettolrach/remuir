@@ -14,9 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
-use std::collections::HashMap;
 use std::convert::Infallible;
-use std::io;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
