@@ -19,6 +19,12 @@ fn example1_program() -> Program {
     ][..]);
     Program::new_from_lines(&lines, memory)
 }
+fn example2_string() -> String {
+    String::from("registers 10 5
+loop: decjz r1 halt
+decjz r0 halt
+decjz r2 loop")
+}
 fn example2_program() -> Program {
     let lines: Vec<Line> = vec![
         Line::new(0, Some(Identifier::Label(String::from("loop"))), Instruction::DECJZ(RegisterNumber::Natural(1), Identifier::Halt)),
@@ -36,6 +42,13 @@ fn example2_program() -> Program {
 fn parse_correctly() {
     let prog = parse_str(&example1_string()).unwrap();
     let prog_control = example1_program();
+    assert_eq!(prog, prog_control)
+}
+
+#[test]
+fn parse_example2() {
+    let prog = parse_str(&example2_string()).unwrap();
+    let prog_control = example2_program();
     assert_eq!(prog, prog_control)
 }
 

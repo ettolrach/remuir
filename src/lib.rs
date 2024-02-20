@@ -159,6 +159,7 @@ impl Default for Memory {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Identifier {
     Label(String),
+    Line(LineNumber),
     Halt,
 }
 
@@ -226,6 +227,9 @@ impl Line {
     pub fn new(line_number: LineNumber, id: Option<Identifier>, instruction: Instruction) -> Line {
         Line { line_number, id, instruction }
     }
+    pub fn change_id(&mut self, new_id: Option<Identifier>) {
+        self.id = new_id;
+    }
 }
 
 struct RuntimeError;
@@ -250,11 +254,20 @@ impl Program {
         }
     }
     pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Program {
-        let lines_vec: Vec<Line> = Vec::from(lines_slice);
+        let mut lines_vec: Vec<Line> = Vec::from(lines_slice);
         let mut labels_map = VecMap::new();
+        // Create a map of labels.
         for l in &lines_vec {
             if let Some(Identifier::Label(s)) = &l.id {
                 labels_map.update(s.to_string(), l.line_number);
+            }
+        }
+        // Now replace all labels in DECJZ instructions with line numbers to speed up jumps.
+        for l in &mut lines_vec {
+            if let Instruction::DECJZ(_, Identifier::Label(s)) = &l.instruction {
+                if let Some(new_num) = labels_map.get(s) {
+                    l.change_id(Some(Identifier::Line(*new_num)));
+                }
             }
         }
         Program {
@@ -266,12 +279,13 @@ impl Program {
         }
     }
 
-    pub fn go_to_identifier(&mut self, s: &str) {
-        match self.labels.get(&s.to_string()) {
-            Some(line_num) => {
-                self.current_line = *line_num;
-            }
-            None => unreachable!(),
+    pub fn go_to_identifier(&mut self, id: &Identifier) {
+        match id {
+            Identifier::Halt => self.current_line = (self.lines.len() + 1) as LineNumber,
+            Identifier::Line(n) => self.current_line = *n,
+            Identifier::Label(s) => { 
+                self.current_line = *self.labels.get(s).expect("Every line should have a label.");
+            },
         }
     }
 
@@ -288,17 +302,12 @@ impl Program {
                         RegisterNumber::Negative(x) => self.negative_memory.inc(&x),
                     };
                 }
-                Instruction::DECJZ(register, indet_to_jump_to) => {
+                Instruction::DECJZ(register, ident_to_jump_to) => {
                     match register {
                         RegisterNumber::Natural(n) => {
                             if self.natural_memory.is_zero(&n) {
-                                match indet_to_jump_to {
-                                    Identifier::Halt => self.current_line = (self.lines.len() + 1) as LineNumber,
-                                    Identifier::Label(l) => {
-                                        self.go_to_identifier(&l);
-                                        continue;
-                                    },
-                                }
+                                self.go_to_identifier(&ident_to_jump_to);
+                                continue;
                             }
                             else {
                                 self.natural_memory.dec(&n);
@@ -306,13 +315,8 @@ impl Program {
                         },
                         RegisterNumber::Negative(x) => {
                             if self.negative_memory.is_zero(&x) {
-                                match indet_to_jump_to {
-                                    Identifier::Halt => self.current_line = (self.lines.len() + 1) as LineNumber,
-                                    Identifier::Label(l) => {
-                                        self.go_to_identifier(&l);
-                                        continue;
-                                    },
-                                }
+                                self.go_to_identifier(&ident_to_jump_to);
+                                continue;
                             }
                             else {
                                 self.negative_memory.dec(&x);
