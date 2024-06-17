@@ -16,7 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 //! A map using a vec without hashing.
 //! 
-//! Performance should be fast for small lists where the hashing function of HashMap would unnecessarily slow down lookup.
+//! Performance should be fast for small lists where the hashing function of [`std::collections::HashMap`] would unnecessarily slow down lookup.
 //! 
 //! # Examples
 //! ```
@@ -36,12 +36,7 @@ pub struct VecMap<K, V> {
     pub vec: Vec<(K, V)>
 }
 impl<K, V> VecMap<K, V> {
-    pub fn new() -> VecMap<K, V>
-    where
-        K: PartialEq,
-    {
-        VecMap { vec: Vec::new() }
-    }
+    #[must_use]
     pub fn from_slice(tuples: &[(K, V)]) -> VecMap<K, V>
     where
         K: Clone,
@@ -50,6 +45,8 @@ impl<K, V> VecMap<K, V> {
     {
         VecMap { vec: Vec::from(tuples) }
     }
+
+    #[must_use]
     pub fn get(&self, key: &K) -> Option<&V>
     where
         K: PartialEq,
@@ -59,6 +56,8 @@ impl<K, V> VecMap<K, V> {
             None => None,
         }
     }
+    
+    #[must_use]
     fn position(&self, key: &K) -> Option<usize>
     where
         K: PartialEq,
@@ -79,18 +78,22 @@ impl<K, V> VecMap<K, V> {
             None => self.vec.push((key, value)),
         }
     }
-    pub fn update_with_fn(&mut self, key: K, identity: V, func: impl FnOnce(&V) -> V)
+    pub fn update_with_fn(&mut self, key: K, identity: &V, func: impl FnOnce(&V) -> V)
     where
         K: PartialEq
     {
         match self.position(&key) {
             Some(i) => self.vec[i].1 = func(&self.vec[i].1),
-            None => self.update(key, func(&identity)),
+            None => self.update(key, func(identity)),
         }
     }
+    
+    #[must_use]
     pub fn keys(&self) -> Vec<&K> {
         self.vec.iter().map(|tuple| &tuple.0).collect()
     }
+    
+    #[must_use]
     pub fn values(&self) -> Vec<&V> {
         self.vec.iter().map(|tuple| &tuple.1).collect()
     }
@@ -101,7 +104,7 @@ mod tests {
     use crate::vecmap::VecMap;
     #[test]
     fn simple_update() {
-        let mut us_presidents: VecMap<u8, String> = VecMap::from_slice(&vec![
+        let mut us_presidents: VecMap<u8, String> = VecMap::from_slice(&[
             (43, String::from("George W. Bush")),
             (44, String::from("Barack Obama")),
             (45, String::from("Donald Trump")),

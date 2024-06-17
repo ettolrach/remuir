@@ -19,18 +19,20 @@ use pest_derive::Parser;
 use thiserror::Error;
 use super::*;
 
+use crate::memory::Register;
+
 #[derive(Parser)]
 #[grammar = "syntax.pest"]
 pub struct RemuirParser;
 
+#[must_use]
 pub fn parse_register_line(s: &str) -> Memory {
     let register_line = RemuirParser::parse(Rule::register_line, s)
         .expect("Shouldn't fail")
         .next()
         .expect("Can't fail.");
 
-    Memory::new_from_iterator(
-        register_line
+    register_line
         // Turn into an iterator of Pest Pairs.
         .into_inner()
         // Each rule will be the register initial value, so use a map to make them u128s.
@@ -38,9 +40,10 @@ pub fn parse_register_line(s: &str) -> Memory {
             |r| r.as_str().parse::<u128>().expect("Assume r < 2^128.")
         )
         .map(Register::new_from_u128)
-    )
+        .collect()
 }
 
+#[must_use]
 fn parse_label(s: &str) -> Identifier {
     match s.to_lowercase().as_str() {
         "halt" => Identifier::Halt,
@@ -50,8 +53,8 @@ fn parse_label(s: &str) -> Identifier {
 
 #[derive(Error, Debug)]
 pub enum ParseSourceError {
-    #[error("No known instruction called {0}.")]
-    UnknownInstruction(String),
+    #[error("Syntax error: invalid program source code.")]
+    SyntaxError(#[from] Box<pest::error::Error<Rule>>),
     #[error("Too many arguments specified. Got {received} but {instruction} expects {expected}.")]
     TooManyArgument {
         received: usize,
@@ -68,6 +71,7 @@ pub enum ParseSourceError {
     NoInitialRegisters,
 }
 
+#[must_use]
 pub fn parse_inc(s: &str) -> Instruction {
     let inc = RemuirParser::parse(Rule::inc, s)
         .unwrap()
@@ -77,15 +81,25 @@ pub fn parse_inc(s: &str) -> Instruction {
         .next()
         .unwrap();
 
-    use RegisterNumber as Rnum;
     let reg_num: RegisterNumber = match inc.as_rule() {
-        Rule::pos_register_num => Rnum::Natural(inc.as_str().parse().expect("Guaranteed by Pest.")),
-        Rule::neg_register_num => Rnum::Negative(inc.as_str().parse().expect("Guaranteed by Pest.")),
+        Rule::pos_register_num => RegisterNumber::Natural(
+            inc
+                .as_str()
+                .parse()
+                .expect("Guaranteed by Pest.")
+        ),
+        Rule::neg_register_num => RegisterNumber::Negative(
+            inc
+                .as_str()
+                .parse()
+                .expect("Guaranteed by Pest.")
+        ),
         _ => unreachable!(),
     };
     Instruction::INC(reg_num)
 }
 
+#[must_use]
 pub fn parse_decjz(s: &str) -> Instruction {
     use RegisterNumber as Rnum;
     let decjz = RemuirParser::parse(Rule::decjz, s)
@@ -108,6 +122,7 @@ pub fn parse_decjz(s: &str) -> Instruction {
     Instruction::DECJZ(final_register_number, final_label)
 }
 
+#[must_use]
 pub fn parse_instruction_line(s: &str, line_num: usize) -> Line {
     let line = RemuirParser::parse(Rule::instruction_line, s)
         .unwrap()
@@ -121,16 +136,16 @@ pub fn parse_instruction_line(s: &str, line_num: usize) -> Line {
         match part.as_rule() {
             Rule::line_label => {
                 let s = part.as_str();
-                id = Some(Identifier::Label(s[0..(s.len() - 1)].to_string()))
+                id = Some(Identifier::Label(s[0..(s.len() - 1)].to_string()));
             },
             Rule::instruction => {
                 let instruction_part = part.into_inner().next().unwrap();
                 match instruction_part.as_rule() {
                     Rule::inc => {
-                        instruction = parse_inc(instruction_part.as_str())
+                        instruction = parse_inc(instruction_part.as_str());
                     },
                     Rule::decjz => {
-                        instruction = parse_decjz(instruction_part.as_str())
+                        instruction = parse_decjz(instruction_part.as_str());
                     },
                     _ => unreachable!(),
                 }
@@ -142,11 +157,19 @@ pub fn parse_instruction_line(s: &str, line_num: usize) -> Line {
     Line::new(line_num, id, instruction)
 }
 
+/// Parse a program source code and return a [`Program`] struct if the source code is valid.
+/// 
+/// # Errors
+/// 
+/// * [`ParseSourceError::SyntaxError`] - when there's a syntax error in the source code.
+/// * [`ParseSourceError::NoInitialRegisters`] - when a program doesn't have an initial registers
+/// line.
 pub fn parse_str(input: &str) -> Result<Program, ParseSourceError> {
     use ParseSourceError as PSErr;
-    let file = RemuirParser::parse(Rule::file, input)
-        .expect("NEED TO HANDLE IF THE INPUT IS INVALID!!!")
-        .next().expect("Can never fail.");
+    let file = match RemuirParser::parse(Rule::file, input) {
+        Ok(mut pairs) => pairs.next().expect("Can never fail."),
+        Err(e) => return Err(PSErr::SyntaxError(Box::new(e))),
+    };
 
     let mut lines: Vec<Line> = Vec::new();
     let mut initial_memory: Result<Memory, PSErr> = Err(PSErr::NoInitialRegisters);

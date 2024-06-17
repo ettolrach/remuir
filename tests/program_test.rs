@@ -1,4 +1,4 @@
-use remuir::*;
+use remuir::{*, memory::*};
 
 fn get_example_program() -> Program {
     let lines: Vec<Line> = vec![

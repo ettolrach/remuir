@@ -1,4 +1,4 @@
-use remuir::{*, parser::parse_str};
+use remuir::{*, parser::parse_str, memory::*};
 
 fn example1_string() -> String {
     String::from("registers 1 2 3
