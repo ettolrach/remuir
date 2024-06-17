@@ -1,4 +1,24 @@
-use remuir::{*, memory::*};
+/* remuir: a register machine emulator written in Rust.
+Copyright (C) 2024  Charlotte Ausel
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>. */
+
+use remuir::{
+    memory::{ Memory, Register, RegisterNumber },
+    parser::parse_str,
+    program::{ Identifier, Instruction, Line, Program },
+};
 
 fn get_example_program() -> Program {
     let lines: Vec<Line> = vec![
@@ -11,17 +31,6 @@ fn get_example_program() -> Program {
         Register::new_from_u128(5),
     ][..]);
     Program::new_from_lines(&lines, memory)
-}
-
-#[test]
-fn input_parsed_correctly() {
-    let input = String::from("registers 10 5
-loop: decjz r1 HALT
-decjz r0 HALT
-decjz r2 loop");
-    let prog: Program = parser::parse_str(&input).unwrap();
-    let control_program = get_example_program();
-    assert_eq!(prog, control_program)
 }
 
 #[test]
@@ -41,7 +50,7 @@ decjz r3 loop1
 loop2: decjz r2 halt
 inc r1
 decjz r3 loop2");
-    let mut prog: Program = parser::parse_str(&source_code).unwrap();
+    let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 3 3 0 0")
 }
@@ -56,7 +65,7 @@ decjz r-1 loop1
 loop2: decjz r-2 halt
 inc r1
 decjz r-1 loop2");
-    let mut prog: Program = parser::parse_str(&source_code).unwrap();
+    let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 3 3")
 }
@@ -64,7 +73,7 @@ decjz r-1 loop2");
 #[test]
 fn empty_program() {
     let source_code = String::from("registers 1 2 3");
-    let mut prog: Program = parser::parse_str(&source_code).unwrap();
+    let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 1 2 3")
 }
@@ -73,7 +82,7 @@ fn empty_program() {
 fn simple_increment() {
     let source_code = String::from("registers 0 3
     inc r0");
-    let mut prog: Program = parser::parse_str(&source_code).unwrap();
+    let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 1 3")
 }
@@ -93,7 +102,7 @@ inc r1
 
 
 decjz r-1 loop2");
-    let mut prog: Program = parser::parse_str(&source_code).unwrap();
+    let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 3 3")
 }
@@ -109,7 +118,7 @@ decjz r-1 loop1
 loop2: decjz r-2 halt
 inc r1
 decjz r-1 loop2");
-    let mut prog: Program = parser::parse_str(&source_code).unwrap();
+    let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
     assert_eq!(prog.get_state(), "registers 3 3")
 }

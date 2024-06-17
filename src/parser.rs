@@ -17,9 +17,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
-use super::*;
 
-use crate::memory::Register;
+use crate::{
+    memory::{ Memory, Register, RegisterNumber },
+    program::{ Identifier, Instruction, Line, Program},
+};
 
 #[derive(Parser)]
 #[grammar = "syntax.pest"]
