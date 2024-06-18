@@ -15,6 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 use std::{ convert::Infallible, str::FromStr };
+use thiserror::Error;
+
 use crate::{ memory::{ Memory, RegisterNumber }, vecmap::VecMap };
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -59,7 +61,22 @@ impl Line {
     }
 }
 
-struct RuntimeError;
+#[derive(Error, Debug)]
+pub enum ProgramEditError {
+    #[error("Failed to add label {label:?}, already exists and points to line {line:?}!")]
+    LabelAlreadyExists {
+        label: String,
+        line: usize,
+    },
+    #[error("Cannot go to label {label:?}! Label not found in the code.")]
+    LabelNotFound { label: String },
+}
+
+#[derive(Error, Debug)]
+pub enum RuntimeError {
+    #[error("Cannot step beyond the end of the program.")]
+    EndOfProgram,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Program {
@@ -70,6 +87,8 @@ pub struct Program {
 }
 
 impl Program {
+    // Constructors.
+
     #[must_use]
     pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Program {
         let mut lines_vec: Vec<Line> = Vec::from(lines_slice);
@@ -96,37 +115,98 @@ impl Program {
         }
     }
 
-    pub fn go_to_identifier(&mut self, id: &Identifier) {
+    // Editing.
+
+    /// Try to add a new label to a given line number.
+    /// 
+    /// # Errors
+    /// 
+    /// * [`ProgramEditError::LabelAlreadyExists`] - returned if the label already exists.
+    pub fn add_new_label(&mut self, label: String, line_number: usize) -> Result<(), ProgramEditError> {
+        if let Some(actual_line_number) = self.labels.get(&label) {
+            return Err(ProgramEditError::LabelAlreadyExists {
+                label,
+                line: *actual_line_number,
+            })
+        }
+        self.labels.update(label, line_number);
+        Ok(())
+    }
+
+    /// Set the instruction pointer to a given identifier.
+    /// 
+    /// # Errors
+    /// 
+    /// * [`ProgramEditError::LabelNotFound`] - returned when the specified label doesn't exist in
+    /// the code and couldn't be found.
+    pub fn go_to_identifier(&mut self, id: &Identifier) -> Result<(), ProgramEditError> {
         match id {
-            Identifier::Halt => self.current_line = (self.lines.len() + 1) as LineNumber,
-            Identifier::Line(n) => self.current_line = *n,
+            Identifier::Halt => {
+                self.current_line = self.lines.len() + 1;
+                Ok(())
+            },
+            Identifier::Line(n) => {
+                self.current_line = *n;
+                Ok(())
+            },
             Identifier::Label(s) => { 
-                self.current_line = *self.labels.get(s).expect("Every line should have a label.");
+                self.current_line = match self.labels.get(s) {
+                    Some(&n) => n,
+                    None => return Err(ProgramEditError::LabelNotFound { label: s.to_owned() }),
+                };
+                Ok(())
             },
         }
     }
+
+    // Execution.
 
     pub fn execute(&mut self) {
         if self.lines.is_empty() {
             return;
         }
-        while self.current_line < self.lines.len() as LineNumber {
-            let current_instruction = self.lines[self.current_line as LineNumber].instruction.clone();
-            match current_instruction {
-                Instruction::INC(register) => {
-                    self.memory.inc(register);
-                },
-                Instruction::DECJZ(register, ident_to_jump_to) => {
-                    if self.memory.is_zero(register) {
-                        self.go_to_identifier(&ident_to_jump_to);
-                        continue;
-                    }
-                    self.memory.dec(register);
-                },
-            }
-            self.current_line += 1;
+        while self.current_line < self.lines.len() {
+            self.step_unchecked();
         }
     }
+
+    /// Run the current line of code, or in other words, take a "step".
+    /// 
+    /// # Errors
+    /// 
+    /// [`RuntimeError::EndOfProgram`] - returned when trying to step beyond the end of the
+    /// program.
+    pub fn step(&mut self) -> Result<(), RuntimeError> {
+        if self.current_line >= self.lines.len() {
+            return Err(RuntimeError::EndOfProgram)
+        }
+        self.step_unchecked();
+        Ok(())
+
+    }
+
+    /// Run the current line of code, or in other words, take a "step". Does not check if the
+    /// program has reached the end.
+    fn step_unchecked(&mut self) {
+        let current_instruction = self.lines[self.current_line].instruction.clone();
+        match current_instruction {
+            Instruction::INC(register) => {
+                self.memory.inc(register);
+            },
+            Instruction::DECJZ(register, ident_to_jump_to) => {
+                if self.memory.is_zero(register) {
+                    self
+                        .go_to_identifier(&ident_to_jump_to)
+                        .expect("Ident will always be valid.");
+                    return;
+                }
+                self.memory.dec(register);
+            },
+        }
+        self.current_line += 1;
+    }
+
+    // Getting state.
 
     #[must_use]
     pub fn get_state(&self) -> String {
