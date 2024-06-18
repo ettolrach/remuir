@@ -14,7 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 // This vector represents a little endian number of base 2^128.
 // So, 2^128 + 64 is vec![64, 1]
@@ -222,6 +222,16 @@ impl Memory {
 impl FromIterator<Register> for Memory {
     fn from_iter<T: IntoIterator<Item = Register>>(iter: T) -> Self {
         Memory { nat_registers: Vec::from_iter(iter), neg_registers: Vec::new() }
+    }
+}
+
+impl Display for Memory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("registers")?;
+        for r in &self.nat_registers {
+            f.write_fmt(format_args!(" {}", r.get_u128()))?;
+        }
+        Ok(())
     }
 }
 

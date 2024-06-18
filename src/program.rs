@@ -208,16 +208,15 @@ impl Program {
 
     // Getting state.
 
+    /// Display the state of the (natural) registers.
     #[must_use]
-    pub fn get_state(&self) -> String {
-        let mut to_return = String::new();
-        to_return.push_str("registers");
+    pub fn display_nat_registers(&self) -> String {
+        format!("{}", self.memory)
+    }
 
-        let register_vec = self.memory.get_nat_registers_as_u128();
-        for n in register_vec {
-            to_return.push(' ');
-            to_return.push_str(&n.to_string());
-        }
-        to_return
+    /// Get the state of all registers.
+    #[must_use]
+    pub fn get_state(&self) -> &Memory {
+        &self.memory
     }
 }

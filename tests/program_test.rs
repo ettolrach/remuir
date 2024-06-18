@@ -37,7 +37,7 @@ fn get_example_program() -> Program {
 fn decjz_executing_correctly() {
     let mut program = get_example_program();
     program.execute();
-    assert_eq!(&program.get_state(), "registers 5 0 0")
+    assert_eq!(&program.display_nat_registers(), "registers 5 0 0")
 }
 
 #[test]
@@ -52,7 +52,7 @@ inc r1
 decjz r3 loop2");
     let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
-    assert_eq!(prog.get_state(), "registers 3 3 0 0")
+    assert_eq!(prog.display_nat_registers(), "registers 3 3 0 0")
 }
 
 #[test]
@@ -67,7 +67,7 @@ inc r1
 decjz r-1 loop2");
     let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
-    assert_eq!(prog.get_state(), "registers 3 3")
+    assert_eq!(prog.display_nat_registers(), "registers 3 3")
 }
 
 #[test]
@@ -75,7 +75,7 @@ fn empty_program() {
     let source_code = String::from("registers 1 2 3");
     let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
-    assert_eq!(prog.get_state(), "registers 1 2 3")
+    assert_eq!(prog.display_nat_registers(), "registers 1 2 3")
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn simple_increment() {
     inc r0");
     let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
-    assert_eq!(prog.get_state(), "registers 1 3")
+    assert_eq!(prog.display_nat_registers(), "registers 1 3")
 }
 
 #[test]
@@ -104,7 +104,7 @@ inc r1
 decjz r-1 loop2");
     let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
-    assert_eq!(prog.get_state(), "registers 3 3")
+    assert_eq!(prog.display_nat_registers(), "registers 3 3")
 }
 
 #[test]
@@ -120,5 +120,5 @@ inc r1
 decjz r-1 loop2");
     let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
-    assert_eq!(prog.get_state(), "registers 3 3")
+    assert_eq!(prog.display_nat_registers(), "registers 3 3")
 }

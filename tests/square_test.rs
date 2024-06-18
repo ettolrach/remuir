@@ -79,5 +79,5 @@ inc r0
 decjz r-1 increment");
     let mut prog: Program = parse_str(&source_code).unwrap();
     prog.execute();
-    assert_eq!(prog.get_state(), "registers 9")
+    assert_eq!(prog.display_nat_registers(), "registers 9")
 }
