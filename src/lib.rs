@@ -18,3 +18,4 @@ pub mod memory;
 pub mod parser;
 pub mod program;
 pub mod vecmap;
+pub mod instruction;

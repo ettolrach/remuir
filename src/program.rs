@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 use std::{ convert::Infallible, str::FromStr };
 use thiserror::Error;
 
-use crate::{ memory::{ Memory, RegisterNumber }, vecmap::VecMap };
+use crate::{ instruction::Instruction, memory::Memory, vecmap::VecMap };
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Identifier {
@@ -37,11 +37,6 @@ impl FromStr for Identifier {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Instruction {
-    INC(RegisterNumber),
-    DECJZ(RegisterNumber, Identifier)
-}
 
 type LineNumber = usize;
 
@@ -180,30 +175,21 @@ impl Program {
         if self.current_line >= self.lines.len() {
             return Err(RuntimeError::EndOfProgram)
         }
-        self.step_unchecked();
-        Ok(())
+        self.lines[self.current_line].instruction.execute(&mut self.memory).map(|maybe_ident| match maybe_ident {
+            Some(ident) => {
+                self.go_to_identifier(&ident).unwrap();
+            },
+            None => {
+                self.current_line += 1;
+            },
+        })
 
     }
 
     /// Run the current line of code, or in other words, take a "step". Does not check if the
     /// program has reached the end.
     fn step_unchecked(&mut self) {
-        let current_instruction = self.lines[self.current_line].instruction.clone();
-        match current_instruction {
-            Instruction::INC(register) => {
-                self.memory.inc(register);
-            },
-            Instruction::DECJZ(register, ident_to_jump_to) => {
-                if self.memory.is_zero(register) {
-                    self
-                        .go_to_identifier(&ident_to_jump_to)
-                        .expect("Ident will always be valid.");
-                    return;
-                }
-                self.memory.dec(register);
-            },
-        }
-        self.current_line += 1;
+        self.step().unwrap();
     }
 
     // Getting state.

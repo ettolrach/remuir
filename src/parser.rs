@@ -19,8 +19,9 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::{
+    instruction::Instruction,
     memory::{ Memory, Register, RegisterNumber },
-    program::{ Identifier, Instruction, Line, Program},
+    program::{ Identifier, Line, Program },
 };
 
 #[derive(Parser)]

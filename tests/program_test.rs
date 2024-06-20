@@ -15,9 +15,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 use remuir::{
+    instruction::Instruction,
     memory::{ Memory, Register, RegisterNumber },
     parser::parse_str,
-    program::{ Identifier, Instruction, Line, Program },
+    program::{ Identifier, Line, Program },
 };
 
 fn get_example_program() -> Program {
