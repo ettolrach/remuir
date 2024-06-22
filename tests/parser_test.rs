@@ -18,7 +18,7 @@ use remuir::{
     instruction::Instruction,
     memory::{ Memory, Register, RegisterNumber },
     parser::parse_str,
-    program::{ Identifier, Line, Program },
+    machine::{ Identifier, Line, Machine },
 };
 
 fn example1_string() -> String {
@@ -27,7 +27,7 @@ inc r4
 some_label: decjz r0 HALT
 decjz r-1 some_label")
 }
-fn example1_program() -> Program {
+fn example1_machine() -> Machine {
     let lines: Vec<Line> = vec![
         Line::new(0, None, Instruction::INC(RegisterNumber::Natural(4))),
         Line::new(1, Some(Identifier::Label(String::from("some_label"))), Instruction::DECJZ(RegisterNumber::Natural(0), Identifier::Halt)),
@@ -38,7 +38,7 @@ fn example1_program() -> Program {
         Register::new_from_u128(2),
         Register::new_from_u128(3),
     ][..]);
-    Program::new_from_lines(&lines, memory)
+    Machine::new_from_lines(&lines, memory)
 }
 fn example2_string() -> String {
     String::from("registers 10 5
@@ -46,7 +46,7 @@ loop: decjz r1 halt
 decjz r0 halt
 decjz r2 loop")
 }
-fn example2_program() -> Program {
+fn example2_machine() -> Machine {
     let lines: Vec<Line> = vec![
         Line::new(0, Some(Identifier::Label(String::from("loop"))), Instruction::DECJZ(RegisterNumber::Natural(1), Identifier::Halt)),
         Line::new(1, None, Instruction::DECJZ(RegisterNumber::Natural(0), Identifier::Halt)),
@@ -56,21 +56,21 @@ fn example2_program() -> Program {
         Register::new_from_u128(10),
         Register::new_from_u128(5),
     ][..]);
-    Program::new_from_lines(&lines, memory)
+    Machine::new_from_lines(&lines, memory)
 }
 
 #[test]
 fn parse_correctly() {
-    let prog = parse_str(&example1_string()).unwrap();
-    let prog_control = example1_program();
-    assert_eq!(prog, prog_control)
+    let machine = parse_str(&example1_string()).unwrap();
+    let machine_control = example1_machine();
+    assert_eq!(machine, machine_control)
 }
 
 #[test]
 fn parse_example2() {
-    let prog = parse_str(&example2_string()).unwrap();
-    let prog_control = example2_program();
-    assert_eq!(prog, prog_control)
+    let machine = parse_str(&example2_string()).unwrap();
+    let machine_control = example2_machine();
+    assert_eq!(machine, machine_control)
 }
 
 #[test]

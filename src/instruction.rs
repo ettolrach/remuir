@@ -16,7 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 use crate::{
     memory::{ Memory, RegisterNumber },
-    program::{ Identifier, RuntimeError },
+    machine::{ Identifier, RuntimeError },
 };
 
 

@@ -21,7 +21,7 @@ use thiserror::Error;
 use crate::{
     instruction::Instruction,
     memory::{ Memory, Register, RegisterNumber },
-    program::{ Identifier, Line, Program },
+    machine::{ Identifier, Line, Machine },
 };
 
 #[derive(Parser)]
@@ -56,7 +56,7 @@ fn parse_label(s: &str) -> Identifier {
 
 #[derive(Error, Debug)]
 pub enum ParseSourceError {
-    #[error("Syntax error: invalid program source code.")]
+    #[error("Syntax error: invalid machine source code.")]
     SyntaxError(#[from] Box<pest::error::Error<Rule>>),
     #[error("Too many arguments specified. Got {received} but {instruction} expects {expected}.")]
     TooManyArgument {
@@ -160,14 +160,15 @@ pub fn parse_instruction_line(s: &str, line_num: usize) -> Line {
     Line::new(line_num, id, instruction)
 }
 
-/// Parse a program source code and return a [`Program`] struct if the source code is valid.
+/// Parse a register machine source code and return a [`Machine`] struct if the source code is
+/// valid.
 /// 
 /// # Errors
 /// 
 /// * [`ParseSourceError::SyntaxError`] - when there's a syntax error in the source code.
-/// * [`ParseSourceError::NoInitialRegisters`] - when a program doesn't have an initial registers
+/// * [`ParseSourceError::NoInitialRegisters`] - when a machine doesn't have an initial registers.
 /// line.
-pub fn parse_str(input: &str) -> Result<Program, ParseSourceError> {
+pub fn parse_str(input: &str) -> Result<Machine, ParseSourceError> {
     use ParseSourceError as PSErr;
     let file = match RemuirParser::parse(Rule::file, input) {
         Ok(mut pairs) => pairs.next().expect("Can never fail."),
@@ -191,5 +192,5 @@ pub fn parse_str(input: &str) -> Result<Program, ParseSourceError> {
             _ => unreachable!(),
         }
     }
-    Ok(Program::new_from_lines(&lines[..], initial_memory?))
+    Ok(Machine::new_from_lines(&lines[..], initial_memory?))
 }

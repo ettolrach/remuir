@@ -76,7 +76,7 @@ pub enum RuntimeError {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Program {
+pub struct Machine {
     lines: Vec<Line>,
     current_line: LineNumber,
     initial_memory: Memory,
@@ -84,12 +84,12 @@ pub struct Program {
     labels: VecMap<String, LineNumber>,
 }
 
-impl Program {
+impl Machine {
     // Constructors.
 
     /// Construct a new program from a slice of [`Line`]s.
     #[must_use]
-    pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Program {
+    pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Machine {
         let mut lines_vec: Vec<Line> = Vec::from(lines_slice);
         let mut labels_map = VecMap::default();
         // Create a map of labels.
@@ -106,7 +106,7 @@ impl Program {
                 }
             }
         }
-        Program {
+        Machine {
             lines: lines_vec,
             current_line: 0,
             initial_memory: memory.clone(),

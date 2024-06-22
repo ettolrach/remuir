@@ -18,10 +18,10 @@ use remuir::{
     instruction::Instruction,
     memory::{ Memory, Register, RegisterNumber },
     parser::parse_str,
-    program::{ Identifier, Line, Program },
+    machine::{ Identifier, Line, Machine },
 };
 
-fn get_example_program() -> Program {
+fn get_example_machine() -> Machine {
     let lines: Vec<Line> = vec![
         Line::new(0, Some(Identifier::Label(String::from("loop"))), Instruction::DECJZ(RegisterNumber::Natural(1), Identifier::Halt)),
         Line::new(1, None, Instruction::DECJZ(RegisterNumber::Natural(0), Identifier::Halt)),
@@ -31,14 +31,14 @@ fn get_example_program() -> Program {
         Register::new_from_u128(10),
         Register::new_from_u128(5),
     ][..]);
-    Program::new_from_lines(&lines, memory)
+    Machine::new_from_lines(&lines, memory)
 }
 
 #[test]
 fn decjz_executing_correctly() {
-    let mut program = get_example_program();
-    program.execute();
-    assert_eq!(&program.display_nat_registers(), "registers 5 0 0")
+    let mut machine = get_example_machine();
+    machine.execute();
+    assert_eq!(&machine.display_nat_registers(), "registers 5 0 0")
 }
 
 #[test]
@@ -51,9 +51,9 @@ decjz r3 loop1
 loop2: decjz r2 halt
 inc r1
 decjz r3 loop2");
-    let mut prog: Program = parse_str(&source_code).unwrap();
-    prog.execute();
-    assert_eq!(prog.display_nat_registers(), "registers 3 3 0 0")
+    let mut machine: Machine = parse_str(&source_code).unwrap();
+    machine.execute();
+    assert_eq!(machine.display_nat_registers(), "registers 3 3 0 0")
 }
 
 #[test]
@@ -66,26 +66,26 @@ decjz r-1 loop1
 loop2: decjz r-2 halt
 inc r1
 decjz r-1 loop2");
-    let mut prog: Program = parse_str(&source_code).unwrap();
-    prog.execute();
-    assert_eq!(prog.display_nat_registers(), "registers 3 3")
+    let mut machine: Machine = parse_str(&source_code).unwrap();
+    machine.execute();
+    assert_eq!(machine.display_nat_registers(), "registers 3 3")
 }
 
 #[test]
-fn empty_program() {
+fn empty_machine() {
     let source_code = String::from("registers 1 2 3");
-    let mut prog: Program = parse_str(&source_code).unwrap();
-    prog.execute();
-    assert_eq!(prog.display_nat_registers(), "registers 1 2 3")
+    let mut machine: Machine = parse_str(&source_code).unwrap();
+    machine.execute();
+    assert_eq!(machine.display_nat_registers(), "registers 1 2 3")
 }
 
 #[test]
 fn simple_increment() {
     let source_code = String::from("registers 0 3
     inc r0");
-    let mut prog: Program = parse_str(&source_code).unwrap();
-    prog.execute();
-    assert_eq!(prog.display_nat_registers(), "registers 1 3")
+    let mut machine: Machine = parse_str(&source_code).unwrap();
+    machine.execute();
+    assert_eq!(machine.display_nat_registers(), "registers 1 3")
 }
 
 #[test]
@@ -103,9 +103,9 @@ inc r1
 
 
 decjz r-1 loop2");
-    let mut prog: Program = parse_str(&source_code).unwrap();
-    prog.execute();
-    assert_eq!(prog.display_nat_registers(), "registers 3 3")
+    let mut machine: Machine = parse_str(&source_code).unwrap();
+    machine.execute();
+    assert_eq!(machine.display_nat_registers(), "registers 3 3")
 }
 
 #[test]
@@ -119,7 +119,7 @@ decjz r-1 loop1
 loop2: decjz r-2 halt
 inc r1
 decjz r-1 loop2");
-    let mut prog: Program = parse_str(&source_code).unwrap();
-    prog.execute();
-    assert_eq!(prog.display_nat_registers(), "registers 3 3")
+    let mut machine: Machine = parse_str(&source_code).unwrap();
+    machine.execute();
+    assert_eq!(machine.display_nat_registers(), "registers 3 3")
 }
