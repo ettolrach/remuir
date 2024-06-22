@@ -24,7 +24,7 @@ fn main() -> std::io::Result<()> {
     io::stdin().read_to_string(&mut buffer)?;
     let mut program = parse_str(&buffer).unwrap();
     program.execute();
-    let output = program.get_state();
+    let output = program.display_nat_registers();
     println!("{output}");
     Ok(())
 }

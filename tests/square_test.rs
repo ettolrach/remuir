@@ -14,7 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
-use remuir::{ parser::parse_str, program::Program };
+use remuir::{ parser::parse_str, machine::Machine };
 
 #[test]
 fn square() {
@@ -77,7 +77,7 @@ finished_addition_copy: decjz r-1 increment
 increment: decjz r-3 addition
 inc r0
 decjz r-1 increment");
-    let mut prog: Program = parse_str(&source_code).unwrap();
-    prog.execute();
-    assert_eq!(prog.get_state(), "registers 9")
+    let mut machine: Machine = parse_str(&source_code).unwrap();
+    machine.execute();
+    assert_eq!(machine.display_nat_registers(), "registers 9")
 }
