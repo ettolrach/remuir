@@ -88,7 +88,7 @@ odd_halt: inc r0
 decjz r-1 HALT
 ");
     let mut prog = parse_str(&input).unwrap();
-    prog.execute();
+    prog.run();
     let output = prog.display_nat_registers();
     let expected_output = String::from("registers 1");
     assert_eq!(expected_output, output)

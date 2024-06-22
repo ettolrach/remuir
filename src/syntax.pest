@@ -40,3 +40,6 @@ register_line = { "registers" ~ (register_num)+ }
 instruction_line = { line_label? ~ instruction }
 
 file = { SOI ~ NEWLINE* ~ register_line? ~ (NEWLINE+ ~ instruction_line)* ~ NEWLINE* ~ EOI}
+
+// For REPL mode
+dec = { "dec" ~ register_name }

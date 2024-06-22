@@ -160,6 +160,15 @@ impl From<isize> for RegisterNumber {
     }
 }
 
+impl Display for RegisterNumber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RegisterNumber::Natural(n) => write!(f, "r{}", *n),
+            RegisterNumber::Negative(n) => write!(f, "r-{}", *n),
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Memory {
     nat_registers: Vec<Register>,
@@ -274,6 +283,29 @@ impl Memory {
             to_return.push(reg.get_u128());
         }
         to_return
+    }
+
+    /// Get the current value of a register as a u128.
+    /// 
+    /// # Panics
+    /// 
+    /// * If the value of any register is larger than 2^128 - 1, then this will panic!
+    #[must_use]
+    pub fn get_register(&self, register_number: RegisterNumber) -> String {
+        match register_number {
+            RegisterNumber::Natural(n) => {
+                self.nat_registers.get(n).map_or(
+                    "0".to_string(),
+                    |register| register.get_u128().to_string(),
+                )
+            },
+            RegisterNumber::Negative(n) => {
+                self.neg_registers.get(n).map_or(
+                    "0".to_string(),
+                    |register| register.get_u128().to_string(),
+                )
+            },
+        }
     }
 }
 

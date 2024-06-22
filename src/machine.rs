@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 use std::{ convert::Infallible, str::FromStr };
 use thiserror::Error;
 
-use crate::{ instruction::Instruction, memory::Memory, vecmap::VecMap };
+use crate::{ instruction::Instruction, memory::{Memory, RegisterNumber}, vecmap::VecMap };
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Identifier {
@@ -75,7 +75,7 @@ pub enum RuntimeError {
     Halted,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct Machine {
     lines: Vec<Line>,
     current_line: LineNumber,
@@ -169,6 +169,11 @@ impl Machine {
         }
     }
 
+    /// Replace the current memory with the given memory.
+    pub fn replace_memory(&mut self, new_memory: Memory) {
+        self.memory = new_memory;
+    }
+
     /// Resets the state of the machine by returning the memory to its initial state and setting
     /// the instruction pointer to the first instruction line.
     pub fn reset(&mut self) {
@@ -178,10 +183,15 @@ impl Machine {
 
     // Execution.
 
+    /// Execute the given instruction.
+    pub fn execute(&mut self, instruction: Instruction) -> Option<Identifier> {
+        instruction.execute(&mut self.memory)
+    }
+
     /// Run the machine until it halts.
     /// 
     /// This will start running from whatever the current instruction is.
-    pub fn execute(&mut self) {
+    pub fn run(&mut self) {
         if self.lines.is_empty() {
             return;
         }
@@ -200,18 +210,18 @@ impl Machine {
             return Err(RuntimeError::Halted)
         }
         // Execute the current instruction.
-        self.lines[self.current_line]
+        match self.lines[self.current_line]
             .instruction
             .execute(&mut self.memory)
-            // If Ok and an identifier was returned, then jump to said identifier.
-            .map(|maybe_ident| match maybe_ident {
-                Some(ident) => {
-                    self.go_to_identifier(&ident).unwrap();
-                },
-                None => {
-                    self.current_line += 1;
-                },
-            })
+        {
+            Some(ident) => {
+                self.go_to_identifier(&ident).unwrap();
+            },
+            None => {
+                self.current_line += 1;
+            },
+        }
+        Ok(())
     }
 
     /// Run the current line of code and return the next line to be run (where the instruction
@@ -237,12 +247,29 @@ impl Machine {
     // Getting state.
 
     /// Get a string representation of the state of the (natural) registers.
+    /// 
+    /// # Panics
+    /// 
+    /// * If the value of any register is larger than 2^128 - 1, then this will panic!
     #[must_use]
     pub fn display_nat_registers(&self) -> String {
         format!("{}", self.memory)
     }
 
+    /// Get a string representation of the state of a specific register.
+    /// 
+    /// # Panics
+    /// 
+    /// * If the value of any register is larger than 2^128 - 1, then this will panic!
+    pub fn display_register(&self, register_number: RegisterNumber) -> String {
+        self.memory.get_register(register_number)
+    }
+
     /// Get the state of all registers.
+    /// 
+    /// # Panics
+    /// 
+    /// * If the value of any register is larger than 2^128 - 1, then this will panic!
     #[must_use]
     pub fn get_state(&self) -> &Memory {
         &self.memory
