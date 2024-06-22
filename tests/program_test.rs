@@ -28,8 +28,8 @@ fn get_example_machine() -> Machine {
         Line::new(2, None, Instruction::DECJZ(RegisterNumber::Natural(2), Identifier::Label(String::from("loop")))),
     ];
     let memory = Memory::new_from_slice(&[
-        Register::new_from_u128(10),
-        Register::new_from_u128(5),
+        Register::from(10),
+        Register::from(5),
     ][..]);
     Machine::new_from_lines(&lines, memory)
 }

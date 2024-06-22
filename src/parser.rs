@@ -42,7 +42,7 @@ pub fn parse_register_line(s: &str) -> Memory {
         .map(
             |r| r.as_str().parse::<u128>().expect("Assume r < 2^128.")
         )
-        .map(Register::new_from_u128)
+        .map(Register::from)
         .collect()
 }
 
