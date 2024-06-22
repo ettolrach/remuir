@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn inc_units_max_only_test() {
-        let mut reg = Register::new(&[u128::MAX, u128::MAX, 4, ]);
+        let mut reg = Register::new(&[u128::MAX, u128::MAX, 4]);
         reg.inc();
         assert_eq!(reg, Register::new(&[0, 0, 5]));
     }
