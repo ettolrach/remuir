@@ -65,18 +65,21 @@ pub enum ProgramEditError {
     },
     #[error("Cannot go to label {label:?}! Label not found in the code.")]
     LabelNotFound { label: String },
+    #[error("Cannot go to line number {line_num}! Last line of program is {last_line}.")]
+    LineNumberTooBig { line_num: usize, last_line: usize },
 }
 
 #[derive(Error, Debug)]
 pub enum RuntimeError {
-    #[error("Cannot step beyond the end of the program.")]
-    EndOfProgram,
+    #[error("Cannot execute a step, the machine has halted.")]
+    Halted,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Program {
     lines: Vec<Line>,
     current_line: LineNumber,
+    initial_memory: Memory,
     memory: Memory,
     labels: VecMap<String, LineNumber>,
 }
@@ -84,6 +87,7 @@ pub struct Program {
 impl Program {
     // Constructors.
 
+    /// Construct a new program from a slice of [`Line`]s.
     #[must_use]
     pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Program {
         let mut lines_vec: Vec<Line> = Vec::from(lines_slice);
@@ -105,6 +109,7 @@ impl Program {
         Program {
             lines: lines_vec,
             current_line: 0,
+            initial_memory: memory.clone(),
             memory,
             labels: labels_map,
         }
@@ -116,7 +121,7 @@ impl Program {
     /// 
     /// # Errors
     /// 
-    /// * [`ProgramEditError::LabelAlreadyExists`] - returned if the label already exists.
+    /// * [`ProgramEditError::LabelAlreadyExists`] - returned if a label already exists.
     pub fn add_new_label(&mut self, label: String, line_number: usize) -> Result<(), ProgramEditError> {
         if let Some(actual_line_number) = self.labels.get(&label) {
             return Err(ProgramEditError::LabelAlreadyExists {
@@ -134,6 +139,8 @@ impl Program {
     /// 
     /// * [`ProgramEditError::LabelNotFound`] - returned when the specified label doesn't exist in
     /// the code and couldn't be found.
+    /// * [`ProgramEditError::LineNumberTooBig`] - returned when the line number given is larger
+    /// than the last line number.
     pub fn go_to_identifier(&mut self, id: &Identifier) -> Result<(), ProgramEditError> {
         match id {
             Identifier::Halt => {
@@ -141,8 +148,16 @@ impl Program {
                 Ok(())
             },
             Identifier::Line(n) => {
-                self.current_line = *n;
-                Ok(())
+                if self.lines.len() < *n {
+                    self.current_line = *n;
+                    Ok(())
+                }
+                else {
+                    Err(ProgramEditError::LineNumberTooBig {
+                        line_num: *n,
+                        last_line: self.lines.len() - 1,
+                    })
+                }
             },
             Identifier::Label(s) => { 
                 self.current_line = match self.labels.get(s) {
@@ -154,8 +169,18 @@ impl Program {
         }
     }
 
+    /// Resets the state of the machine by returning the memory to its initial state and setting
+    /// the instruction pointer to the first instruction line.
+    pub fn reset(&mut self) {
+        self.memory = self.initial_memory.clone();
+        self.current_line = 0;
+    }
+
     // Execution.
 
+    /// Run the program until the machine halts.
+    /// 
+    /// This will start running from whatever the current instruction is.
     pub fn execute(&mut self) {
         if self.lines.is_empty() {
             return;
@@ -169,21 +194,38 @@ impl Program {
     /// 
     /// # Errors
     /// 
-    /// [`RuntimeError::EndOfProgram`] - returned when trying to step beyond the end of the
-    /// program.
+    /// * [`RuntimeError::Halted`] - returned when trying to step when the machine has halted.
     pub fn step(&mut self) -> Result<(), RuntimeError> {
         if self.current_line >= self.lines.len() {
-            return Err(RuntimeError::EndOfProgram)
+            return Err(RuntimeError::Halted)
         }
-        self.lines[self.current_line].instruction.execute(&mut self.memory).map(|maybe_ident| match maybe_ident {
-            Some(ident) => {
-                self.go_to_identifier(&ident).unwrap();
-            },
-            None => {
-                self.current_line += 1;
-            },
-        })
+        // Execute the current instruction.
+        self.lines[self.current_line]
+            .instruction
+            .execute(&mut self.memory)
+            // If Ok and an identifier was returned, then jump to said identifier.
+            .map(|maybe_ident| match maybe_ident {
+                Some(ident) => {
+                    self.go_to_identifier(&ident).unwrap();
+                },
+                None => {
+                    self.current_line += 1;
+                },
+            })
+    }
 
+    /// Run the current line of code and return the next line to be run (where the instruction
+    /// pointer is pointing after the step).
+    /// 
+    /// # Errors
+    /// 
+    /// * [`RuntimeError::Halted`] - returned when trying to step when the machine has halted.
+    pub fn step_with_line(&mut self) -> Result<&Line, RuntimeError> {
+        self.step()?;
+        self.lines.get(self.current_line).map_or_else(
+            || Err(RuntimeError::Halted),
+            Result::Ok,
+        )
     }
 
     /// Run the current line of code, or in other words, take a "step". Does not check if the
@@ -194,7 +236,7 @@ impl Program {
 
     // Getting state.
 
-    /// Display the state of the (natural) registers.
+    /// Get a string representation of the state of the (natural) registers.
     #[must_use]
     pub fn display_nat_registers(&self) -> String {
         format!("{}", self.memory)

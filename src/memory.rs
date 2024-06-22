@@ -120,7 +120,7 @@ impl FromStr for RegisterNumber {
     }
 }
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Memory {
     nat_registers: Vec<Register>,
     neg_registers: Vec<Register>,
