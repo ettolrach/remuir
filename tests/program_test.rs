@@ -37,7 +37,7 @@ fn get_example_machine() -> Machine {
 #[test]
 fn decjz_executing_correctly() {
     let mut machine = get_example_machine();
-    machine.execute();
+    machine.run();
     assert_eq!(&machine.display_nat_registers(), "registers 5 0 0")
 }
 
@@ -52,7 +52,7 @@ loop2: decjz r2 halt
 inc r1
 decjz r3 loop2");
     let mut machine: Machine = parse_str(&source_code).unwrap();
-    machine.execute();
+    machine.run();
     assert_eq!(machine.display_nat_registers(), "registers 3 3 0 0")
 }
 
@@ -67,7 +67,7 @@ loop2: decjz r-2 halt
 inc r1
 decjz r-1 loop2");
     let mut machine: Machine = parse_str(&source_code).unwrap();
-    machine.execute();
+    machine.run();
     assert_eq!(machine.display_nat_registers(), "registers 3 3")
 }
 
@@ -75,7 +75,7 @@ decjz r-1 loop2");
 fn empty_machine() {
     let source_code = String::from("registers 1 2 3");
     let mut machine: Machine = parse_str(&source_code).unwrap();
-    machine.execute();
+    machine.run();
     assert_eq!(machine.display_nat_registers(), "registers 1 2 3")
 }
 
@@ -84,7 +84,7 @@ fn simple_increment() {
     let source_code = String::from("registers 0 3
     inc r0");
     let mut machine: Machine = parse_str(&source_code).unwrap();
-    machine.execute();
+    machine.run();
     assert_eq!(machine.display_nat_registers(), "registers 1 3")
 }
 
@@ -104,7 +104,7 @@ inc r1
 
 decjz r-1 loop2");
     let mut machine: Machine = parse_str(&source_code).unwrap();
-    machine.execute();
+    machine.run();
     assert_eq!(machine.display_nat_registers(), "registers 3 3")
 }
 
@@ -120,6 +120,6 @@ loop2: decjz r-2 halt
 inc r1
 decjz r-1 loop2");
     let mut machine: Machine = parse_str(&source_code).unwrap();
-    machine.execute();
+    machine.run();
     assert_eq!(machine.display_nat_registers(), "registers 3 3")
 }

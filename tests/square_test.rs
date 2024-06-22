@@ -78,6 +78,6 @@ increment: decjz r-3 addition
 inc r0
 decjz r-1 increment");
     let mut machine: Machine = parse_str(&source_code).unwrap();
-    machine.execute();
+    machine.run();
     assert_eq!(machine.display_nat_registers(), "registers 9")
 }

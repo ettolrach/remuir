@@ -16,7 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 use crate::{
     memory::{ Memory, RegisterNumber },
-    machine::{ Identifier, RuntimeError },
+    machine::Identifier,
 };
 
 
@@ -27,18 +27,18 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn execute(&self, memory: &mut Memory) -> Result<Option<Identifier>, RuntimeError> {
+    pub fn execute(&self, memory: &mut Memory) -> Option<Identifier> {
         match self {
             Instruction::INC(register) => {
                 memory.inc(*register);
             },
             Instruction::DECJZ(register, ident_to_jump_to) => {
                 if memory.is_zero(*register) {
-                    return Ok(Some(ident_to_jump_to.clone()));
+                    return Some(ident_to_jump_to.clone());
                 }
                 memory.dec(*register);
             },
         }
-        Ok(None)
+        None
     }
 }
