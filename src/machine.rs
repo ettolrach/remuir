@@ -57,7 +57,7 @@ impl Line {
 }
 
 #[derive(Error, Debug)]
-pub enum ProgramEditError {
+pub enum MachineEditError {
     #[error("Failed to add label {label:?}, already exists and points to line {line:?}!")]
     LabelAlreadyExists {
         label: String,
@@ -65,7 +65,7 @@ pub enum ProgramEditError {
     },
     #[error("Cannot go to label {label:?}! Label not found in the code.")]
     LabelNotFound { label: String },
-    #[error("Cannot go to line number {line_num}! Last line of program is {last_line}.")]
+    #[error("Cannot go to line number {line_num}! Last line of the machine is {last_line}.")]
     LineNumberTooBig { line_num: usize, last_line: usize },
 }
 
@@ -87,7 +87,7 @@ pub struct Machine {
 impl Machine {
     // Constructors.
 
-    /// Construct a new program from a slice of [`Line`]s.
+    /// Construct a new machine from a slice of [`Line`]s.
     #[must_use]
     pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Machine {
         let mut lines_vec: Vec<Line> = Vec::from(lines_slice);
@@ -121,10 +121,10 @@ impl Machine {
     /// 
     /// # Errors
     /// 
-    /// * [`ProgramEditError::LabelAlreadyExists`] - returned if a label already exists.
-    pub fn add_new_label(&mut self, label: String, line_number: usize) -> Result<(), ProgramEditError> {
+    /// * [`MachineEditError::LabelAlreadyExists`] - returned if a label already exists.
+    pub fn add_new_label(&mut self, label: String, line_number: usize) -> Result<(), MachineEditError> {
         if let Some(actual_line_number) = self.labels.get(&label) {
-            return Err(ProgramEditError::LabelAlreadyExists {
+            return Err(MachineEditError::LabelAlreadyExists {
                 label,
                 line: *actual_line_number,
             })
@@ -137,11 +137,11 @@ impl Machine {
     /// 
     /// # Errors
     /// 
-    /// * [`ProgramEditError::LabelNotFound`] - returned when the specified label doesn't exist in
+    /// * [`MachineEditError::LabelNotFound`] - returned when the specified label doesn't exist in
     /// the code and couldn't be found.
-    /// * [`ProgramEditError::LineNumberTooBig`] - returned when the line number given is larger
+    /// * [`MachineEditError::LineNumberTooBig`] - returned when the line number given is larger
     /// than the last line number.
-    pub fn go_to_identifier(&mut self, id: &Identifier) -> Result<(), ProgramEditError> {
+    pub fn go_to_identifier(&mut self, id: &Identifier) -> Result<(), MachineEditError> {
         match id {
             Identifier::Halt => {
                 self.current_line = self.lines.len() + 1;
@@ -153,7 +153,7 @@ impl Machine {
                     Ok(())
                 }
                 else {
-                    Err(ProgramEditError::LineNumberTooBig {
+                    Err(MachineEditError::LineNumberTooBig {
                         line_num: *n,
                         last_line: self.lines.len() - 1,
                     })
@@ -162,7 +162,7 @@ impl Machine {
             Identifier::Label(s) => { 
                 self.current_line = match self.labels.get(s) {
                     Some(&n) => n,
-                    None => return Err(ProgramEditError::LabelNotFound { label: s.to_owned() }),
+                    None => return Err(MachineEditError::LabelNotFound { label: s.to_owned() }),
                 };
                 Ok(())
             },
@@ -178,7 +178,7 @@ impl Machine {
 
     // Execution.
 
-    /// Run the program until the machine halts.
+    /// Run the machine until it halts.
     /// 
     /// This will start running from whatever the current instruction is.
     pub fn execute(&mut self) {
@@ -229,7 +229,7 @@ impl Machine {
     }
 
     /// Run the current line of code, or in other words, take a "step". Does not check if the
-    /// program has reached the end.
+    /// machine has halted.
     fn step_unchecked(&mut self) {
         self.step().unwrap();
     }
