@@ -318,6 +318,9 @@ impl FromIterator<Register> for Memory {
 impl Display for Memory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("registers")?;
+        if self.nat_registers.is_empty() {
+            return f.write_str(" 0");
+        }
         for r in &self.nat_registers {
             f.write_fmt(format_args!(" {}", r.get_u128()))?;
         }

@@ -67,6 +67,7 @@ fn repl() -> Result<(), RemuirError> {
     let mut mode = Mode::Repl;
 
     loop {
+        writeln!(io::stdout(), "\n{}", machine.display_nat_registers())?;
         write!(io::stdout(), "remuir> ")?;
         io::stdout().flush()?;
         let mut line = String::new();

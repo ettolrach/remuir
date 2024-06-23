@@ -6,7 +6,7 @@ A register machine emulator written in Rust.
 
 Try stepping through a program right away!
 1. Either download the source code and compile it yourself using `cargo build --release`, or get a compiled binary from the [releases](https://github.com/ettolrach/remuir/releases) page.
-2. Download the [`is_even_executable.remuir`](https://github.com/ettolrach/remuir/blob/main/examples/is_even_executable.remuir) example.
+2. Download the [`is_even_executable.remuir`](https://github.com/ettolrach/remuir/blob/main/examples/is_even_executable.remuir) example (should be included in releases).
 3. Run the command `./remuir --debug path/to/is_even_executable.remuir`.
 4. Now you can step through the code and see how it can determine if a number is even or odd!
 5. Try changing the first line to an even number and see how the machine changes behaviour.
