@@ -14,7 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
-use std::{ convert::Infallible, str::FromStr };
+use std::{ convert::Infallible, fmt::Display, str::FromStr };
 use thiserror::Error;
 
 use crate::{ instruction::Instruction, memory::{Memory, RegisterNumber}, vecmap::VecMap };
@@ -37,6 +37,15 @@ impl FromStr for Identifier {
     }
 }
 
+impl Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Label(s) => write!(f, "{s}"),
+            Self::Line(n) => write!(f, "{n}"),
+            Self::Halt => write!(f, "HALT"),
+        }
+    }
+}
 
 type LineNumber = usize;
 
@@ -56,6 +65,17 @@ impl Line {
     }
 }
 
+impl Display for Line {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.id {
+            Some(Identifier::Label(label)) => write!(f, "{}    {}: {}", self.line_number, label, self.instruction),
+            Some(Identifier::Line(_)) => write!(f, "{}    {}", self.line_number, self.instruction),
+            Some(Identifier::Halt) => unreachable!(),
+            None => write!(f, "{}    {}", self.line_number, self.instruction),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum MachineEditError {
     #[error("Failed to add label {label:?}, already exists and points to line {line:?}!")]
@@ -63,15 +83,25 @@ pub enum MachineEditError {
         label: String,
         line: usize,
     },
-    #[error("Cannot go to label {label:?}! Label not found in the code.")]
+    #[error("Cannot find label {label:?} in the code!")]
     LabelNotFound { label: String },
     #[error("Cannot go to line number {line_num}! Last line of the machine is {last_line}.")]
     LineNumberTooBig { line_num: usize, last_line: usize },
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug, Error)]
 pub enum RuntimeError {
-    #[error("Cannot execute a step, the machine has halted.")]
+    #[error("Cannot execute a step, the machine has already halted.")]
+    Halted,
+}
+
+#[derive(Debug)]
+pub enum TerminationReason {
+    /// A breakpoint was reached.
+    Breakpoint,
+    /// The program has no lines of instructions.
+    Empty,
+    /// The program halted successfully.
     Halted,
 }
 
@@ -82,6 +112,7 @@ pub struct Machine {
     initial_memory: Memory,
     memory: Memory,
     labels: VecMap<String, LineNumber>,
+    breakpoints: Vec<usize>,
 }
 
 impl Machine {
@@ -112,10 +143,54 @@ impl Machine {
             initial_memory: memory.clone(),
             memory,
             labels: labels_map,
+            breakpoints: Vec::new(),
         }
     }
 
     // Editing.
+
+    /// Add a breakpoint if one hasn't been added already, or remove it otherwise.
+    /// 
+    /// # Errors
+    /// 
+    /// * [`MachineEditError::LabelNotFound`] - returned when the specified label doesn't exist in
+    /// the code and couldn't be found.
+    /// * [`MachineEditError::LineNumberTooBig`] - returned when the line number given is larger
+    /// than the last line number.
+    pub fn toggle_breakpoint(&mut self, id: &Identifier) -> Result<(), MachineEditError> {
+        match id {
+            Identifier::Label(s) => {
+                if let Some(n) = self.labels.get(s) {
+                    if self.breakpoints.contains(n) {
+                        self.breakpoints.remove(*n);
+                    }
+                    else {
+                        self.breakpoints.push(*n);
+                    }
+                    Ok(())
+                }
+                else {
+                    Err(MachineEditError::LabelNotFound { label: s.to_owned() })
+                }
+            },
+            Identifier::Line(n) => {
+                if self.lines.get(*n).is_none() {
+                    return Err(MachineEditError::LineNumberTooBig {
+                        line_num: *n,
+                        last_line: self.lines.len()
+                    });
+                }
+                if self.breakpoints.contains(n) {
+                    self.breakpoints.remove(*n);
+                }
+                else {
+                    self.breakpoints.push(*n);
+                }
+                Ok(())
+            },
+            Identifier::Halt => unreachable!(),
+        }
+    }
 
     /// Try to add a new label to a given line number.
     /// 
@@ -183,6 +258,29 @@ impl Machine {
 
     // Execution.
 
+    /// Run the machine until a breakpoint is reached or until it halts.
+    /// 
+    /// # Errors
+    /// 
+    /// * [`RuntimeError::Halted`] - returned when trying to run when the machine has halted.
+    pub fn debug(&mut self) -> Result<TerminationReason, RuntimeError> {
+        if self.lines.is_empty() {
+            return Ok(TerminationReason::Empty);
+        }
+        while self.current_line < self.lines.len()
+            && !self.breakpoints.contains(&self.current_line)
+        {
+            self.step_unchecked();
+        }
+        if self.current_line >= self.lines.len() {
+            Ok(TerminationReason::Halted)
+        }
+        else {
+            Ok(TerminationReason::Breakpoint)
+        }
+
+    }
+
     /// Execute the given instruction.
     pub fn execute(&mut self, instruction: Instruction) -> Option<Identifier> {
         instruction.execute(&mut self.memory)
@@ -205,7 +303,7 @@ impl Machine {
     /// # Errors
     /// 
     /// * [`RuntimeError::Halted`] - returned when trying to step when the machine has halted.
-    pub fn step(&mut self) -> Result<(), RuntimeError> {
+    pub fn step(&mut self) -> Result<Option<TerminationReason>, RuntimeError> {
         if self.current_line >= self.lines.len() {
             return Err(RuntimeError::Halted)
         }
@@ -221,7 +319,10 @@ impl Machine {
                 self.current_line += 1;
             },
         }
-        Ok(())
+        if self.current_line >= self.lines.len() {
+            return Ok(Some(TerminationReason::Halted))
+        }
+        Ok(None)
     }
 
     /// Run the current line of code and return the next line to be run (where the instruction
@@ -231,7 +332,7 @@ impl Machine {
     /// 
     /// * [`RuntimeError::Halted`] - returned when trying to step when the machine has halted.
     pub fn step_with_line(&mut self) -> Result<&Line, RuntimeError> {
-        self.step()?;
+        let _ = self.step()?;
         self.lines.get(self.current_line).map_or_else(
             || Err(RuntimeError::Halted),
             Result::Ok,
@@ -273,5 +374,24 @@ impl Machine {
     #[must_use]
     pub fn get_state(&self) -> &Memory {
         &self.memory
+    }
+
+    /// Get the current line number which the instruction pointer is pointing to.
+    #[must_use]
+    pub fn get_current_line_number(&self) -> usize {
+        self.current_line
+    }
+
+    /// Check if the machine is halted.
+    #[must_use]
+    pub fn is_halted(&self) -> bool {
+        self.current_line >= self.lines.len()
+    }
+
+    /// Get the next line to be executed (i.e. what the instruction pointer is pointing to at the
+    /// moment).
+    #[must_use]
+    pub fn peek_next_line(&self) -> &Line {
+        &self.lines[self.current_line]
     }
 }

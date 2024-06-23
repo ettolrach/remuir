@@ -20,9 +20,12 @@ use clap::Parser;
 
 use std::io::{self, Read, Write,};
 
-use remuir::{instruction::Instruction, machine::Machine, parser};
+use remuir::{machine::Machine, parser};
 
 mod text_literals;
+mod tui;
+
+use tui::{printers, Mode, RemuirError};
 #[allow(clippy::wildcard_imports)]
 use text_literals::*;
 
@@ -31,98 +34,96 @@ use text_literals::*;
 struct Cli {
     #[arg(short, long)]
     repl: bool,
+    #[arg(short, long)]
+    debug: Option<std::path::PathBuf>,
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> tui::ExitStatus {
     let cli = Cli::parse();
     if cli.repl {
-        repl()
+        tui::ExitStatus::from(repl())
+    }
+    else if let Some(path) = cli.debug {
+        tui::ExitStatus::from(debug(path))
     }
     else {
-        let mut buffer = String::new();
-        io::stdin().read_to_string(&mut buffer)?;
-        let mut program = parser::parse_str(&buffer).unwrap();
-        program.run();
-        let output = program.display_nat_registers();
-        println!("{output}");
-        Ok(())
+        tui::ExitStatus::from(run())
     }
 }
 
-fn repl() -> std::io::Result<()> {
-    writeln!(io::stdout(), "{}", welcome_text())?;
+fn run() -> io::Result<()> {
+    let mut buffer = String::new();
+    io::stdin().read_to_string(&mut buffer)?;
+    let mut program = parser::parse_str(&buffer).unwrap();
+    program.run();
+    let output = program.display_nat_registers();
+    println!("{output}");
+    Ok(())
+}
+
+fn repl() -> Result<(), RemuirError> {
+    writeln!(io::stdout(), "{}", welcome_repl())?;
     let mut machine = Machine::default();
+    let mut mode = Mode::Repl;
+
     loop {
         write!(io::stdout(), "remuir> ")?;
         io::stdout().flush()?;
         let mut line = String::new();
         let bytes = io::stdin().read_line(&mut line)?;
         let input = line.trim();
-        if ["exit", "quit", "q"].contains(&input) || bytes == 0 {
-            writeln!(io::stdout())?;
+
+        // Handle EOF/Ctrl+D.
+        if bytes == 0 {
+            printers::goodbye()?;
             break;
         }
-        else if ["help", "h"].contains(&input) {
-            writeln!(io::stdout(), "{HELP_TEXT}")?;
+
+        // Handle the command and decide whether to keep looping or not.
+        match tui::command(input, &mut machine, &mut mode)? {
+            tui::ReplState::KeepLooping => continue,
+            tui::ReplState::Stop => break,
         }
-        else if ["registers", "r"].contains(&input) {
-            writeln!(io::stdout(), "{}", machine.display_nat_registers())?;
-        }
-        else if let Ok(mem) = parser::parse_register_line(input) {
-            machine.replace_memory(mem);
-            writeln!(io::stdout(), 
-                "Registers successfully changed. Current state:\n{}",
-                machine.display_nat_registers()
-            )?;
-        }
-        else if input.starts_with("inc") {
-            match parser::parse_inc(input) {
-                Ok(Instruction::INC(reg_num)) => {
-                    let _ = machine.execute(Instruction::INC(reg_num));
-                    writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
-                },
-                Err(parser::ParseSourceError::SyntaxError(b)) => {
-                    writeln!(io::stdout(), "Syntax error:\n{b}")?;
-                    writeln!(io::stdout(), "Correct usage: inc r[NUMBER]")?;
-                },
-                _ => unreachable!(),
-            }
-        }
-        else if input.starts_with("decjz") {
-            match parser::parse_decjz(input) {
-                Ok(Instruction::DECJZ(reg_num, label)) => {
-                    if machine.execute(Instruction::DECJZ(reg_num, label)).is_some() {
-                        writeln!(io::stdout(), "Register was already 0. Not jumping due to being in REPL mode.")?;
-                    } else {
-                        writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
-                    }
-                },
-                Err(parser::ParseSourceError::SyntaxError(b)) => {
-                    writeln!(io::stdout(), "Syntax error:\n{b}")?;
-                    writeln!(io::stdout(), "Correct usage: decjz r[NUMBER] [LABEL]")?;
-                },
-                _ => unreachable!(),
-            }
-        }
-        else if input.starts_with("dec") {
-            match parser::parse_dec(input) {
-                Ok(Instruction::DECJZ(reg_num, label)) => {
-                    let _ = machine.execute(Instruction::DECJZ(reg_num, label));
-                    writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
-                },
-                Err(parser::ParseSourceError::SyntaxError(b)) => {
-                    writeln!(io::stdout(), "Syntax error:\n{b}")?;
-                    writeln!(io::stdout(), "Correct usage: dec r[NUMBER]")?;
-                },
-                _ => unreachable!(),
-            }
+    }
+    Ok(())
+}
+
+fn debug(path: std::path::PathBuf) -> Result<(), RemuirError> {
+    writeln!(io::stdout(), "{}", welcome_debug())?;
+    
+    let source_code: String = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(e) => {
+            writeln!(io::stdout(), "Error opening and reading file! {e}")?;
+            return Err(RemuirError::IOError(e));
+        },
+    };
+    let mut machine = parser::parse_str(&source_code)?;
+    let mut mode = Mode::Debug { previous_line: None, previous_memory: None };
+
+    loop {
+        writeln!(io::stdout(), "\n{}", machine.display_nat_registers())?;
+        if machine.is_halted() {
+            writeln!(io::stdout(), "Next line:\nNone (machine halted).")?;
         }
         else {
-            writeln!(io::stdout(), "Unknown command \"{input}\". Type \"help\" for a list of commands.")?;
-            if input.starts_with("register ") {
-                writeln!(io::stdout(), "Note: \"register\" is close to \"registers\".")?;
-            }
-            continue;
+            writeln!(io::stdout(), "Next line:\n{}", machine.peek_next_line())?;
+        }
+        printers::print_prompt()?;
+        let mut line = String::new();
+        let bytes = io::stdin().read_line(&mut line)?;
+        let input = line.trim();
+
+        // Handle EOF/Ctrl+D.
+        if bytes == 0 {
+            printers::goodbye()?;
+            break;
+        }
+
+        // Handle the command and decide whether to keep looping or not.
+        match tui::command(input, &mut machine, &mut mode)? {
+            tui::ReplState::KeepLooping => continue,
+            tui::ReplState::Stop => break,
         }
     }
     Ok(())

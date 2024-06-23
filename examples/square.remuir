@@ -8,51 +8,32 @@ decjz r-1 1stcopy1
 inc r0
 decjz r-1 1stcopy2
 
-# Now, r0 will be copied to the following registers:
-# r-3 represents increment,
-# r-4 represents addition,
-# r-5 represents multiplication.
+# Now, r0 will be copied to r-3.
 
 3rdcopy1: decjz r0 3rdcopy2
 inc r-4
 inc r-9
 decjz r-1 3rdcopy1
-3rdcopy2: decjz r-9 4thcopy1
+3rdcopy2: decjz r-9 drain
 inc r0
 decjz r-1 3rdcopy2
 
-4thcopy1: decjz r0 4thcopy2
-inc r-5
-inc r-9
-decjz r-1 4thcopy1
-4thcopy2: decjz r-9 drain
-inc r0
-decjz r-1 4thcopy2
-
 # Set r0 to 0.
-drain: decjz r0 increment
+drain: decjz r0 addition
 decjz r-1 drain
 
-# First, r-3 will be depleted. Then, r-4 gets decremented and r-3 gets reset to the initial value,
-# which is saved in r-2.
-# When r-4 gets depleted, r-5 gets decremented and r-4 gets reset (and in turn, r-3).
-# Once r-4 is depleted, we are done.
-
-
-
-# Now that we've finished incrementing, decrement the addition counter:
-addition: decjz r-4 HALT
-# Restore the increment counter:
-additioncopy1: decjz r-2 additioncopy2
+multiplication: decjz r-4 HALT
+# Restore the counter:
+multiplication_copy1: decjz r-2 multiplication_copy2
 inc r-3
 inc r-9
-decjz r-1 additioncopy1
-additioncopy2: decjz r-9 finished_addition_copy
+decjz r-1 multiplication_copy1
+multiplication_copy2: decjz r-9 finished_multiplication_copy
 inc r-2
-decjz r-1 additioncopy2
-# and go back to incrementing:
-finished_addition_copy: decjz r-1 increment
+decjz r-1 multiplication_copy2
+# and go back to adding:
+finished_multiplication_copy: decjz r-1 addition
 
-increment: decjz r-3 addition
+addition: decjz r-3 multiplication
 inc r0
-decjz r-1 increment
+decjz r-1 addition

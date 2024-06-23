@@ -57,7 +57,7 @@ fn parse_label(s: &str) -> Identifier {
 
 #[derive(Error, Debug)]
 pub enum ParseSourceError {
-    #[error("Syntax error: invalid machine source code.")]
+    #[error("Syntax error: invalid machine source code. {0}")]
     SyntaxError(#[from] Box<pest::error::Error<Rule>>),
     #[error("Too many arguments specified. Got {received} but {instruction} expects {expected}.")]
     TooManyArgument {
@@ -148,6 +148,7 @@ pub fn parse_instruction_line(s: &str, line_num: usize) -> Result<Line, ParseSou
         match part.as_rule() {
             Rule::line_label => {
                 let s = part.as_str();
+                // We need to remove the colon at the end of the label.
                 id = Some(Identifier::Label(s[0..(s.len() - 1)].to_string()));
             },
             Rule::instruction => {
@@ -179,10 +180,15 @@ pub fn parse_instruction_line(s: &str, line_num: usize) -> Result<Line, ParseSou
 /// line.
 pub fn parse_str(input: &str) -> Result<Machine, ParseSourceError> {
     use ParseSourceError as PSErr;
-    let file = RemuirParser::parse(Rule::file, input)
-        ?
-        .next()
-        .expect("Can never fail.");
+    let file = match RemuirParser::parse(Rule::file, input) {
+        Ok(mut pairs) => pairs.next().expect("Can never fail."),
+        Err(e) => {
+            if !input.trim().starts_with("registers ") {
+                return Err(PSErr::NoInitialRegisters);
+            }
+            return Err(PSErr::from(e));
+        },
+    };
 
     let mut lines: Vec<Line> = Vec::new();
     let mut initial_memory: Result<Memory, PSErr> = Err(PSErr::NoInitialRegisters);
