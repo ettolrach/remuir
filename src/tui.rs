@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 use std::{fmt::Display, io::{self, Write}, process::ExitCode};
 
-use remuir::{instruction::Instruction, machine::{Identifier, Machine, RuntimeError, TerminationReason}, memory::Memory, parser};
+use remuir::{instruction::Instruction, machine::{BreakpointToggle, Identifier, Machine, RuntimeError, TerminationReason}, memory::Memory, parser};
 use thiserror::Error;
 
 pub enum ExitStatus {
@@ -295,14 +295,22 @@ pub fn command(input: &str, machine: &mut Machine, mode: &mut Mode) -> Result<Re
             }
             let Some(ident) = get_ident(input_split)? else { return Ok(ReplState::KeepLooping) };
             match machine.toggle_breakpoint(&ident) {
-                Ok(()) => writeln!(io::stdout(), "Successfully added breakpoint.")?,
+                Ok(BreakpointToggle::Added) => {
+                    writeln!(io::stdout(), "Added breakpoint.")?;
+                },
+                Ok(BreakpointToggle::Removed) => {
+                    writeln!(io::stdout(), "Removed breakpoint.")?;
+                },
                 Err(e) => {
                     writeln!(io::stdout(), "{e}")?;
                 },
             };
         },
         _ => {
-            writeln!(io::stdout(), "Unknown command \"{input}\". Type \"help\" for a list of commands.")?;
+            writeln!(
+                io::stdout(),
+                "Unknown command \"{input}\". Type \"help\" for a list of commands.",
+            )?;
             if input.starts_with("register ") {
                 writeln!(io::stdout(), "Note: \"register\" is close to \"registers\".")?;
             }

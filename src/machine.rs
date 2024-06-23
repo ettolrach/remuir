@@ -95,7 +95,7 @@ pub enum RuntimeError {
     Halted,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum TerminationReason {
     /// A breakpoint was reached.
     Breakpoint,
@@ -103,6 +103,12 @@ pub enum TerminationReason {
     Empty,
     /// The program halted successfully.
     Halted,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BreakpointToggle {
+    Added,
+    Removed,
 }
 
 #[derive(Debug, PartialEq, Default)]
@@ -157,17 +163,18 @@ impl Machine {
     /// the code and couldn't be found.
     /// * [`MachineEditError::LineNumberTooBig`] - returned when the line number given is larger
     /// than the last line number.
-    pub fn toggle_breakpoint(&mut self, id: &Identifier) -> Result<(), MachineEditError> {
+    pub fn toggle_breakpoint(&mut self, id: &Identifier) -> Result<BreakpointToggle, MachineEditError> {
         match id {
             Identifier::Label(s) => {
                 if let Some(n) = self.labels.get(s) {
                     if self.breakpoints.contains(n) {
-                        self.breakpoints.remove(*n);
+                        self.breakpoints.retain(|x| x != n);
+                        Ok(BreakpointToggle::Removed)
                     }
                     else {
                         self.breakpoints.push(*n);
+                        Ok(BreakpointToggle::Added)
                     }
-                    Ok(())
                 }
                 else {
                     Err(MachineEditError::LabelNotFound { label: s.to_owned() })
@@ -181,12 +188,13 @@ impl Machine {
                     });
                 }
                 if self.breakpoints.contains(n) {
-                    self.breakpoints.remove(*n);
+                    self.breakpoints.retain(|x| x != n);
+                    Ok(BreakpointToggle::Removed)
                 }
                 else {
                     self.breakpoints.push(*n);
+                    Ok(BreakpointToggle::Added)
                 }
-                Ok(())
             },
             Identifier::Halt => unreachable!(),
         }
