@@ -223,7 +223,7 @@ impl Machine {
                 Ok(())
             },
             Identifier::Line(n) => {
-                if self.lines.len() < *n {
+                if *n < self.lines.len() {
                     self.current_line = *n;
                     Ok(())
                 }

@@ -35,6 +35,7 @@ play, p               Execute the program until a breakpoint is reached or the m
 registers [NUMBERS]   Set the registers to the given state. See README.md for more details.
 reset, r              Set the state of the registers to their initial state and point to the first instruction.
 step, s               Take a step (execute the current instruction and point to the next instruction).
+undo, u               Undo the last step. Currently, you can only undo 1 step, not multiple!
 
 remuir instructions:
 inc r[NUMBER]           Increase the given register by 1.
