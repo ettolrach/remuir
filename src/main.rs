@@ -25,7 +25,7 @@ use remuir::{machine::Machine, parser};
 mod text_literals;
 mod tui;
 
-use tui::printers;
+use tui::{printers, Mode, RemuirError};
 #[allow(clippy::wildcard_imports)]
 use text_literals::*;
 
@@ -34,27 +34,38 @@ use text_literals::*;
 struct Cli {
     #[arg(short, long)]
     repl: bool,
+    #[arg(short, long)]
+    debug: Option<std::path::PathBuf>,
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> tui::ExitStatus {
     let cli = Cli::parse();
     if cli.repl {
-        repl()
+        tui::ExitStatus::from(repl())
+    }
+    else if let Some(path) = cli.debug {
+        tui::ExitStatus::from(debug(path))
     }
     else {
-        let mut buffer = String::new();
-        io::stdin().read_to_string(&mut buffer)?;
-        let mut program = parser::parse_str(&buffer).unwrap();
-        program.run();
-        let output = program.display_nat_registers();
-        println!("{output}");
-        Ok(())
+        tui::ExitStatus::from(run())
     }
 }
 
-fn repl() -> std::io::Result<()> {
-    writeln!(io::stdout(), "{}", welcome_text())?;
+fn run() -> io::Result<()> {
+    let mut buffer = String::new();
+    io::stdin().read_to_string(&mut buffer)?;
+    let mut program = parser::parse_str(&buffer).unwrap();
+    program.run();
+    let output = program.display_nat_registers();
+    println!("{output}");
+    Ok(())
+}
+
+fn repl() -> Result<(), RemuirError> {
+    writeln!(io::stdout(), "{}", welcome_repl())?;
     let mut machine = Machine::default();
+    let mut mode = Mode::Repl;
+
     loop {
         write!(io::stdout(), "remuir> ")?;
         io::stdout().flush()?;
@@ -68,7 +79,49 @@ fn repl() -> std::io::Result<()> {
             break;
         }
 
-        match tui::repl_command(input, &mut machine)? {
+        // Handle the command and decide whether to keep looping or not.
+        match tui::command(input, &mut machine, &mut mode)? {
+            tui::ReplState::KeepLooping => continue,
+            tui::ReplState::Stop => break,
+        }
+    }
+    Ok(())
+}
+
+fn debug(path: std::path::PathBuf) -> Result<(), RemuirError> {
+    writeln!(io::stdout(), "{}", welcome_debug())?;
+    
+    let source_code: String = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(e) => {
+            writeln!(io::stdout(), "Error opening and reading file! {e}")?;
+            return Err(RemuirError::IOError(e));
+        },
+    };
+    let mut machine = parser::parse_str(&source_code)?;
+    let mut mode = Mode::Debug { previous_line: None, previous_memory: None };
+
+    loop {
+        writeln!(io::stdout(), "\n{}", machine.display_nat_registers())?;
+        if machine.is_halted() {
+            writeln!(io::stdout(), "Next line:\nNone (machine halted).")?;
+        }
+        else {
+            writeln!(io::stdout(), "Next line:\n{}", machine.peek_next_line())?;
+        }
+        printers::print_prompt()?;
+        let mut line = String::new();
+        let bytes = io::stdin().read_line(&mut line)?;
+        let input = line.trim();
+
+        // Handle EOF/Ctrl+D.
+        if bytes == 0 {
+            printers::goodbye()?;
+            break;
+        }
+
+        // Handle the command and decide whether to keep looping or not.
+        match tui::command(input, &mut machine, &mut mode)? {
             tui::ReplState::KeepLooping => continue,
             tui::ReplState::Stop => break,
         }

@@ -1,0 +1,10 @@
+registers 5
+
+beginning: decjz r0 even_halt
+decjz r0 odd_halt
+decjz r-1 beginning
+
+even_halt: decjz r-1 HALT
+
+odd_halt: inc r0
+decjz r-1 HALT

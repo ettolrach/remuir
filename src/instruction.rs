@@ -14,6 +14,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
+use std::fmt::Display;
+
 use crate::{
     memory::{ Memory, RegisterNumber },
     machine::Identifier,
@@ -40,5 +42,14 @@ impl Instruction {
             },
         }
         None
+    }
+}
+
+impl Display for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::INC(num) => write!(f, "inc {num}"),
+            Self::DECJZ(num, id) => write!(f, "decjz {num} {id}"),
+        }
     }
 }
