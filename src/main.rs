@@ -20,9 +20,12 @@ use clap::Parser;
 
 use std::io::{self, Read, Write,};
 
-use remuir::{instruction::Instruction, machine::Machine, parser};
+use remuir::{machine::Machine, parser};
 
 mod text_literals;
+mod tui;
+
+use tui::printers;
 #[allow(clippy::wildcard_imports)]
 use text_literals::*;
 
@@ -58,71 +61,16 @@ fn repl() -> std::io::Result<()> {
         let mut line = String::new();
         let bytes = io::stdin().read_line(&mut line)?;
         let input = line.trim();
-        if ["exit", "quit", "q"].contains(&input) || bytes == 0 {
-            writeln!(io::stdout())?;
+
+        // Handle EOF/Ctrl+D.
+        if bytes == 0 {
+            printers::goodbye()?;
             break;
         }
-        else if ["help", "h"].contains(&input) {
-            writeln!(io::stdout(), "{HELP_TEXT}")?;
-        }
-        else if ["registers", "r"].contains(&input) {
-            writeln!(io::stdout(), "{}", machine.display_nat_registers())?;
-        }
-        else if let Ok(mem) = parser::parse_register_line(input) {
-            machine.replace_memory(mem);
-            writeln!(io::stdout(), 
-                "Registers successfully changed. Current state:\n{}",
-                machine.display_nat_registers()
-            )?;
-        }
-        else if input.starts_with("inc") {
-            match parser::parse_inc(input) {
-                Ok(Instruction::INC(reg_num)) => {
-                    let _ = machine.execute(Instruction::INC(reg_num));
-                    writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
-                },
-                Err(parser::ParseSourceError::SyntaxError(b)) => {
-                    writeln!(io::stdout(), "Syntax error:\n{b}")?;
-                    writeln!(io::stdout(), "Correct usage: inc r[NUMBER]")?;
-                },
-                _ => unreachable!(),
-            }
-        }
-        else if input.starts_with("decjz") {
-            match parser::parse_decjz(input) {
-                Ok(Instruction::DECJZ(reg_num, label)) => {
-                    if machine.execute(Instruction::DECJZ(reg_num, label)).is_some() {
-                        writeln!(io::stdout(), "Register was already 0. Not jumping due to being in REPL mode.")?;
-                    } else {
-                        writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
-                    }
-                },
-                Err(parser::ParseSourceError::SyntaxError(b)) => {
-                    writeln!(io::stdout(), "Syntax error:\n{b}")?;
-                    writeln!(io::stdout(), "Correct usage: decjz r[NUMBER] [LABEL]")?;
-                },
-                _ => unreachable!(),
-            }
-        }
-        else if input.starts_with("dec") {
-            match parser::parse_dec(input) {
-                Ok(Instruction::DECJZ(reg_num, label)) => {
-                    let _ = machine.execute(Instruction::DECJZ(reg_num, label));
-                    writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
-                },
-                Err(parser::ParseSourceError::SyntaxError(b)) => {
-                    writeln!(io::stdout(), "Syntax error:\n{b}")?;
-                    writeln!(io::stdout(), "Correct usage: dec r[NUMBER]")?;
-                },
-                _ => unreachable!(),
-            }
-        }
-        else {
-            writeln!(io::stdout(), "Unknown command \"{input}\". Type \"help\" for a list of commands.")?;
-            if input.starts_with("register ") {
-                writeln!(io::stdout(), "Note: \"register\" is close to \"registers\".")?;
-            }
-            continue;
+
+        match tui::repl_command(input, &mut machine)? {
+            tui::ReplState::KeepLooping => continue,
+            tui::ReplState::Stop => break,
         }
     }
     Ok(())
