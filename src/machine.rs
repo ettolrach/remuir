@@ -69,7 +69,7 @@ impl Display for Line {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.id {
             Some(Identifier::Label(label)) => write!(f, "{}    {}: {}", self.line_number, label, self.instruction),
-            Some(Identifier::Line(n)) => write!(f, "{}    {}", self.line_number, self.instruction),
+            Some(Identifier::Line(_)) => write!(f, "{}    {}", self.line_number, self.instruction),
             Some(Identifier::Halt) => unreachable!(),
             None => write!(f, "{}    {}", self.line_number, self.instruction),
         }
