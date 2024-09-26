@@ -15,9 +15,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 //! A map using a vec without hashing.
-//! 
+//!
 //! Performance should be fast for small lists where the hashing function of [`std::collections::HashMap`] would unnecessarily slow down lookup.
-//! 
+//!
 //! # Examples
 //! ```
 //! use remuir::vecmap::VecMap;
@@ -31,19 +31,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 //! us_presidents.update(42, String::from("Bill Clinton"));
 //! assert_eq!("Bill Clinton", us_presidents.get(&42).unwrap());
 //! ```
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct VecMap<K, V> {
     pub vec: Vec<(K, V)>
 }
 impl<K, V> VecMap<K, V> {
     #[must_use]
+    // The use_self has a false positive here. TODO: file bug to the clippy devs.
+    #[expect(clippy::use_self)]
     pub fn from_slice(tuples: &[(K, V)]) -> VecMap<K, V>
     where
-        K: Clone,
-        K: PartialEq,
+        K: Clone + PartialEq,
         V: Clone,
     {
-        VecMap { vec: Vec::from(tuples) }
+        Self { vec: Vec::from(tuples) }
     }
 
     #[must_use]
@@ -51,12 +52,9 @@ impl<K, V> VecMap<K, V> {
     where
         K: PartialEq,
     {
-        match self.position(key) {
-            Some(i) => Some(&self.vec[i].1),
-            None => None,
-        }
+        self.position(key).map(|i| &self.vec[i].1)
     }
-    
+
     #[must_use]
     fn position(&self, key: &K) -> Option<usize>
     where
@@ -87,12 +85,12 @@ impl<K, V> VecMap<K, V> {
             None => self.update(key, func(identity)),
         }
     }
-    
+
     #[must_use]
     pub fn keys(&self) -> Vec<&K> {
         self.vec.iter().map(|tuple| &tuple.0).collect()
     }
-    
+
     #[must_use]
     pub fn values(&self) -> Vec<&V> {
         self.vec.iter().map(|tuple| &tuple.1).collect()

@@ -22,7 +22,7 @@ use crate::{
 };
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instruction {
     INC(RegisterNumber),
     DECJZ(RegisterNumber, Identifier)
@@ -31,10 +31,10 @@ pub enum Instruction {
 impl Instruction {
     pub fn execute(&self, memory: &mut Memory) -> Option<Identifier> {
         match self {
-            Instruction::INC(register) => {
+            Self::INC(register) => {
                 memory.inc(*register);
             },
-            Instruction::DECJZ(register, ident_to_jump_to) => {
+            Self::DECJZ(register, ident_to_jump_to) => {
                 if memory.is_zero(*register) {
                     return Some(ident_to_jump_to.clone());
                 }

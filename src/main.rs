@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 
 use clap::Parser;
 
-use std::io::{self, Read, Write,};
+use std::io::{self, Read, Write};
 
 use remuir::{machine::Machine, parser};
 
@@ -26,7 +26,7 @@ mod text_literals;
 mod tui;
 
 use tui::{printers, Mode, RemuirError};
-#[allow(clippy::wildcard_imports)]
+#[expect(clippy::wildcard_imports)]
 use text_literals::*;
 
 #[derive(Parser)]
@@ -91,7 +91,7 @@ fn repl() -> Result<(), RemuirError> {
 
 fn debug(path: std::path::PathBuf) -> Result<(), RemuirError> {
     writeln!(io::stdout(), "{}", welcome_debug())?;
-    
+
     let source_code: String = match std::fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {

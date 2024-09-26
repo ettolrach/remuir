@@ -73,9 +73,9 @@ pub mod printers {
 
     use std::io::{self, Write};
     use crate::text_literals;
-    
+
     /// Print a message when quitting an interactive mode.
-    /// 
+    ///
     /// Currently, it just prints a newline, but in the future this could have a goodbye message.
     pub fn goodbye() -> io::Result<()> {
         writeln!(io::stdout())
@@ -238,7 +238,7 @@ pub fn command(input: &str, machine: &mut Machine, mode: &mut Mode) -> Result<Re
     // Try to parse a memory init line.
     if let Ok(mem) = parser::parse_register_line(input) {
         machine.replace_memory(mem);
-        writeln!(io::stdout(), 
+        writeln!(io::stdout(),
             "Registers successfully changed!"
         )?;
         return Ok(ReplState::KeepLooping);
@@ -249,7 +249,7 @@ pub fn command(input: &str, machine: &mut Machine, mode: &mut Mode) -> Result<Re
         Some("inc") => {
             match parser::parse_inc(input) {
                 Ok(Instruction::INC(reg_num)) => {
-                    let _ = machine.execute(Instruction::INC(reg_num));
+                    let _ = machine.execute(&Instruction::INC(reg_num));
                     writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
                 },
                 Err(parser::ParseSourceError::SyntaxError(b)) => {
@@ -262,7 +262,7 @@ pub fn command(input: &str, machine: &mut Machine, mode: &mut Mode) -> Result<Re
         Some("decjz") => {
             match parser::parse_decjz(input) {
                 Ok(Instruction::DECJZ(reg_num, label)) => {
-                    if machine.execute(Instruction::DECJZ(reg_num, label)).is_some() {
+                    if machine.execute(&Instruction::DECJZ(reg_num, label)).is_some() {
                         writeln!(io::stdout(), "Register was already 0. Not jumping due to being in {mode} mode.")?;
                     } else {
                         writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
@@ -278,7 +278,7 @@ pub fn command(input: &str, machine: &mut Machine, mode: &mut Mode) -> Result<Re
         Some("dec") => {
             match parser::parse_dec(input) {
                 Ok(Instruction::DECJZ(reg_num, label)) => {
-                    let _ = machine.execute(Instruction::DECJZ(reg_num, label));
+                    let _ = machine.execute(&Instruction::DECJZ(reg_num, label));
                     writeln!(io::stdout(), "Register {reg_num} is now {}.", machine.display_register(reg_num))?;
                 },
                 Err(parser::ParseSourceError::SyntaxError(b)) => {

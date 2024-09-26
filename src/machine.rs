@@ -31,8 +31,8 @@ impl FromStr for Identifier {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().as_str() {
-            "HALT" => Ok(Identifier::Halt),
-            _ => Ok(Identifier::Label(String::from(s))),
+            "HALT" => Ok(Self::Halt),
+            _ => Ok(Self::Label(String::from(s))),
         }
     }
 }
@@ -49,7 +49,7 @@ impl Display for Identifier {
 
 type LineNumber = usize;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Line {
     line_number: LineNumber,
     id: Option<Identifier>,
@@ -57,8 +57,8 @@ pub struct Line {
 }
 impl Line {
     #[must_use]
-    pub fn new(line_number: LineNumber, id: Option<Identifier>, instruction: Instruction) -> Line {
-        Line { line_number, id, instruction }
+    pub const fn new(line_number: LineNumber, id: Option<Identifier>, instruction: Instruction) -> Self {
+        Self { line_number, id, instruction }
     }
     pub fn change_id(&mut self, new_id: Option<Identifier>) {
         self.id = new_id;
@@ -69,15 +69,14 @@ impl Display for Line {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.id {
             Some(Identifier::Label(label)) => write!(f, "{}    {}: {}", self.line_number, label, self.instruction),
-            Some(Identifier::Line(_)) => write!(f, "{}    {}", self.line_number, self.instruction),
             Some(Identifier::Halt) => unreachable!(),
-            None => write!(f, "{}    {}", self.line_number, self.instruction),
+            Some(Identifier::Line(_)) | None => write!(f, "{}    {}", self.line_number, self.instruction),
         }
     }
 }
 
 #[derive(Error, Debug)]
-pub enum MachineEditError {
+pub enum EditError {
     #[error("Failed to add label {label:?}, already exists and points to line {line:?}!")]
     LabelAlreadyExists {
         label: String,
@@ -111,7 +110,7 @@ pub enum BreakpointToggle {
     Removed,
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct Machine {
     lines: Vec<Line>,
     current_line: LineNumber,
@@ -126,7 +125,7 @@ impl Machine {
 
     /// Construct a new machine from a slice of [`Line`]s.
     #[must_use]
-    pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Machine {
+    pub fn new_from_lines(lines_slice: &[Line], memory: Memory) -> Self {
         let mut lines_vec: Vec<Line> = Vec::from(lines_slice);
         let mut labels_map = VecMap::default();
         // Create a map of labels.
@@ -143,7 +142,7 @@ impl Machine {
                 }
             }
         }
-        Machine {
+        Self {
             lines: lines_vec,
             current_line: 0,
             initial_memory: memory.clone(),
@@ -156,14 +155,14 @@ impl Machine {
     // Editing.
 
     /// Add a breakpoint if one hasn't been added already, or remove it otherwise.
-    /// 
+    ///
     /// # Errors
-    /// 
-    /// * [`MachineEditError::LabelNotFound`] - returned when the specified label doesn't exist in
-    /// the code and couldn't be found.
-    /// * [`MachineEditError::LineNumberTooBig`] - returned when the line number given is larger
-    /// than the last line number.
-    pub fn toggle_breakpoint(&mut self, id: &Identifier) -> Result<BreakpointToggle, MachineEditError> {
+    ///
+    /// * [`EditError::LabelNotFound`] - returned when the specified label doesn't exist in
+    ///   the code and couldn't be found.
+    /// * [`EditError::LineNumberTooBig`] - returned when the line number given is larger
+    ///   than the last line number.
+    pub fn toggle_breakpoint(&mut self, id: &Identifier) -> Result<BreakpointToggle, EditError> {
         match id {
             Identifier::Label(s) => {
                 if let Some(n) = self.labels.get(s) {
@@ -177,12 +176,12 @@ impl Machine {
                     }
                 }
                 else {
-                    Err(MachineEditError::LabelNotFound { label: s.to_owned() })
+                    Err(EditError::LabelNotFound { label: s.to_owned() })
                 }
             },
             Identifier::Line(n) => {
                 if self.lines.get(*n).is_none() {
-                    return Err(MachineEditError::LineNumberTooBig {
+                    return Err(EditError::LineNumberTooBig {
                         line_num: *n,
                         last_line: self.lines.len()
                     });
@@ -201,13 +200,13 @@ impl Machine {
     }
 
     /// Try to add a new label to a given line number.
-    /// 
+    ///
     /// # Errors
-    /// 
-    /// * [`MachineEditError::LabelAlreadyExists`] - returned if a label already exists.
-    pub fn add_new_label(&mut self, label: String, line_number: usize) -> Result<(), MachineEditError> {
+    ///
+    /// * [`EditError::LabelAlreadyExists`] - returned if a label already exists.
+    pub fn add_new_label(&mut self, label: String, line_number: usize) -> Result<(), EditError> {
         if let Some(actual_line_number) = self.labels.get(&label) {
-            return Err(MachineEditError::LabelAlreadyExists {
+            return Err(EditError::LabelAlreadyExists {
                 label,
                 line: *actual_line_number,
             })
@@ -217,14 +216,14 @@ impl Machine {
     }
 
     /// Set the instruction pointer to a given identifier.
-    /// 
+    ///
     /// # Errors
-    /// 
-    /// * [`MachineEditError::LabelNotFound`] - returned when the specified label doesn't exist in
-    /// the code and couldn't be found.
-    /// * [`MachineEditError::LineNumberTooBig`] - returned when the line number given is larger
-    /// than the last line number.
-    pub fn go_to_identifier(&mut self, id: &Identifier) -> Result<(), MachineEditError> {
+    ///
+    /// * [`EditError::LabelNotFound`] - returned when the specified label doesn't exist in
+    ///   the code and couldn't be found.
+    /// * [`EditError::LineNumberTooBig`] - returned when the line number given is larger
+    ///   than the last line number.
+    pub fn go_to_identifier(&mut self, id: &Identifier) -> Result<(), EditError> {
         match id {
             Identifier::Halt => {
                 self.current_line = self.lines.len() + 1;
@@ -236,16 +235,16 @@ impl Machine {
                     Ok(())
                 }
                 else {
-                    Err(MachineEditError::LineNumberTooBig {
+                    Err(EditError::LineNumberTooBig {
                         line_num: *n,
                         last_line: self.lines.len() - 1,
                     })
                 }
             },
-            Identifier::Label(s) => { 
+            Identifier::Label(s) => {
                 self.current_line = match self.labels.get(s) {
                     Some(&n) => n,
-                    None => return Err(MachineEditError::LabelNotFound { label: s.to_owned() }),
+                    None => return Err(EditError::LabelNotFound { label: s.to_owned() }),
                 };
                 Ok(())
             },
@@ -267,9 +266,9 @@ impl Machine {
     // Execution.
 
     /// Run the machine until a breakpoint is reached or until it halts.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// * [`RuntimeError::Halted`] - returned when trying to run when the machine has halted.
     pub fn debug(&mut self) -> Result<TerminationReason, RuntimeError> {
         if self.lines.is_empty() {
@@ -290,12 +289,12 @@ impl Machine {
     }
 
     /// Execute the given instruction.
-    pub fn execute(&mut self, instruction: Instruction) -> Option<Identifier> {
+    pub fn execute(&mut self, instruction: &Instruction) -> Option<Identifier> {
         instruction.execute(&mut self.memory)
     }
 
     /// Run the machine until it halts.
-    /// 
+    ///
     /// This will start running from whatever the current instruction is.
     pub fn run(&mut self) {
         if self.lines.is_empty() {
@@ -307,10 +306,11 @@ impl Machine {
     }
 
     /// Run the current line of code, or in other words, take a "step".
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// * [`RuntimeError::Halted`] - returned when trying to step when the machine has halted.
+    #[expect(clippy::missing_panics_doc)]
     pub fn step(&mut self) -> Result<Option<TerminationReason>, RuntimeError> {
         if self.current_line >= self.lines.len() {
             return Err(RuntimeError::Halted)
@@ -321,7 +321,7 @@ impl Machine {
             .execute(&mut self.memory)
         {
             Some(ident) => {
-                self.go_to_identifier(&ident).unwrap();
+                self.go_to_identifier(&ident).expect("We've already dealt with any edit error.");
             },
             None => {
                 self.current_line += 1;
@@ -335,9 +335,9 @@ impl Machine {
 
     /// Run the current line of code and return the next line to be run (where the instruction
     /// pointer is pointing after the step).
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// * [`RuntimeError::Halted`] - returned when trying to step when the machine has halted.
     pub fn step_with_line(&mut self) -> Result<&Line, RuntimeError> {
         let _ = self.step()?;
@@ -356,9 +356,9 @@ impl Machine {
     // Getting state.
 
     /// Get a string representation of the state of the (natural) registers.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// * If the value of any register is larger than 2^128 - 1, then this will panic!
     #[must_use]
     pub fn display_nat_registers(&self) -> String {
@@ -366,27 +366,28 @@ impl Machine {
     }
 
     /// Get a string representation of the state of a specific register.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// * If the value of any register is larger than 2^128 - 1, then this will panic!
+    #[must_use]
     pub fn display_register(&self, register_number: RegisterNumber) -> String {
         self.memory.get_register(register_number)
     }
 
     /// Get the state of all registers.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// * If the value of any register is larger than 2^128 - 1, then this will panic!
     #[must_use]
-    pub fn get_state(&self) -> &Memory {
+    pub const fn get_state(&self) -> &Memory {
         &self.memory
     }
 
     /// Get the current line number which the instruction pointer is pointing to.
     #[must_use]
-    pub fn get_current_line_number(&self) -> usize {
+    pub const fn get_current_line_number(&self) -> usize {
         self.current_line
     }
 

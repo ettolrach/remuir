@@ -26,8 +26,15 @@ use crate::{
 
 #[derive(Parser)]
 #[grammar = "syntax.pest"]
+#[expect(clippy::module_name_repetitions)]
 pub struct RemuirParser;
 
+/// Parse a register line.
+///
+/// # Errors
+///
+/// * [`ParseSourceError::SyntaxError`] - the syntax was incorrect.
+#[expect(clippy::missing_panics_doc)]
 pub fn parse_register_line(s: &str) -> Result<Memory, ParseSourceError> {
     let register_line = RemuirParser::parse(Rule::register_line, s)
         ?
@@ -77,23 +84,24 @@ pub enum ParseSourceError {
 
 impl From<pest::error::Error<Rule>> for ParseSourceError {
     fn from(value: pest::error::Error<Rule>) -> Self {
-        ParseSourceError::SyntaxError(Box::new(value))
+        Self::SyntaxError(Box::new(value))
     }
 }
 
 /// Parse an increment line.
-/// 
+///
 /// # Errors
-/// 
+///
 /// * [`ParseSourceError::SyntaxError`] - when there's a syntax error in the source code.
+#[expect(clippy::missing_panics_doc)]
 pub fn parse_inc(s: &str) -> Result<Instruction, ParseSourceError> {
     let inc = RemuirParser::parse(Rule::inc, s)
         ?
         .next()
-        .unwrap()
+        .expect("Guaranteed by Pest.")
         .into_inner()
         .next()
-        .unwrap();
+        .expect("Guaranteed by Pest.");
 
     let reg_num: RegisterNumber = match inc.as_rule() {
         Rule::pos_register_num => RegisterNumber::Natural(
@@ -113,12 +121,18 @@ pub fn parse_inc(s: &str) -> Result<Instruction, ParseSourceError> {
     Ok(Instruction::INC(reg_num))
 }
 
+/// Parse a decrement line.
+///
+/// # Errors
+///
+/// * [`ParseSourceError::SyntaxError`] - when there's a syntax error in the source code.
+#[expect(clippy::missing_panics_doc)]
 pub fn parse_decjz(s: &str) -> Result<Instruction, ParseSourceError> {
     use RegisterNumber as Rnum;
     let decjz = RemuirParser::parse(Rule::decjz, s)
         ?
         .next()
-        .unwrap();
+        .expect("Guaranteed by Pest.");
 
     let mut final_register_number = Rnum::Natural(0);
     let mut final_label = Identifier::Halt;
@@ -131,15 +145,21 @@ pub fn parse_decjz(s: &str) -> Result<Instruction, ParseSourceError> {
             _ => unreachable!(),
         }
     }
-    
+
     Ok(Instruction::DECJZ(final_register_number, final_label))
 }
 
+/// Parse an instruction line.
+///
+/// # Errors
+///
+/// * [`ParseSourceError::SyntaxError`] - when there's a syntax error in the source code.
+#[expect(clippy::missing_panics_doc)]
 pub fn parse_instruction_line(s: &str, line_num: usize) -> Result<Line, ParseSourceError> {
     let line = RemuirParser::parse(Rule::instruction_line, s)
         ?
         .next()
-        .unwrap();
+        .expect("Guaranteed by Pest.");
 
     let mut id: Option<Identifier> = None;
     let mut instruction = Instruction::INC(RegisterNumber::Natural(0));
@@ -172,12 +192,13 @@ pub fn parse_instruction_line(s: &str, line_num: usize) -> Result<Line, ParseSou
 
 /// Parse a register machine source code and return a [`Machine`] struct if the source code is
 /// valid.
-/// 
+///
 /// # Errors
-/// 
+///
 /// * [`ParseSourceError::SyntaxError`] - when there's a syntax error in the source code.
 /// * [`ParseSourceError::NoInitialRegisters`] - when a machine doesn't have an initial registers.
-/// line.
+///   line.
+#[expect(clippy::missing_panics_doc)]
 pub fn parse_str(input: &str) -> Result<Machine, ParseSourceError> {
     use ParseSourceError as PSErr;
     let file = match RemuirParser::parse(Rule::file, input) {
@@ -211,14 +232,19 @@ pub fn parse_str(input: &str) -> Result<Machine, ParseSourceError> {
 }
 
 /// Parse a dec instruction. For REPL mode only.
+///
+/// # Errors
+///
+/// * [`ParseSourceError::SyntaxError`] - when there's a syntax error.
+#[expect(clippy::missing_panics_doc)]
 pub fn parse_dec(s: &str) -> Result<Instruction, ParseSourceError> {
     let dec = RemuirParser::parse(Rule::dec, s)
         ?
         .next()
-        .unwrap()
+        .expect("Guaranteed by Pest.")
         .into_inner()
         .next()
-        .unwrap();
+        .expect("Guaranteed by Pest.");
 
     let reg_num: RegisterNumber = match dec.as_rule() {
         Rule::pos_register_num => RegisterNumber::Natural(

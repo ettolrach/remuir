@@ -19,21 +19,21 @@ use std::{fmt::Display, str::FromStr};
 use thiserror::Error;
 
 /// A register, some memory which stores one natural number.
-/// 
+///
 /// Internally, this uses a representation which will allow an arbitrarily large number to be
 /// stored, but is realistically limited by what the operating system will allow.
 // This vector represents a little endian number of base 2^128.
 // So, 2^128 + 73 is vec![73, 1]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Register (Vec<u128>);
 
 impl Register {
     /// Create a new register using a slice of a little-endian encoded base 2^128 number.
-    /// 
+    ///
     /// So, 2^128 + 73 could be constructed via `Register::new(&[73, 1])`.
     #[must_use]
-    pub fn new(registers: &[u128]) -> Register {
-        Register(Vec::from(registers))
+    pub fn new(registers: &[u128]) -> Self {
+        Self(Vec::from(registers))
     }
 
     /// Increment the register by 1.
@@ -60,6 +60,7 @@ impl Register {
     }
 
     /// Decrement the register by 1.
+    #[expect(clippy::missing_panics_doc)]
     pub fn dec(&mut self) {
         // A similar principal to inc() is used here.
         let mut decreased = false;
@@ -78,7 +79,6 @@ impl Register {
         }
         // If a digit *was* decreased, check whether it's now 0.
         // If so, remove it (no leading zeros!).
-        #[allow(clippy::missing_panics_doc)]
         if decreased && self.0.last().expect("Register always has at least one digit") == &0 {
             self.0.pop();
         }
@@ -91,9 +91,9 @@ impl Register {
     }
 
     /// Get the state of the register as a u128 number.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// * If the value of the register is larger than 2^128 - 1, then this will panic!
     #[must_use]
     fn get_u128(&self) -> u128 {
@@ -109,7 +109,7 @@ impl Register {
 
 impl From<u128> for Register {
     fn from(value: u128) -> Self {
-        Register(vec![value])
+        Self(vec![value])
     }
 }
 
@@ -152,10 +152,10 @@ impl FromStr for RegisterNumber {
 impl From<isize> for RegisterNumber {
     fn from(value: isize) -> Self {
         if value.is_negative() {
-            RegisterNumber::Negative(value.unsigned_abs())
+            Self::Negative(value.unsigned_abs())
         }
         else {
-            RegisterNumber::Natural(value.unsigned_abs())
+            Self::Natural(value.unsigned_abs())
         }
     }
 }
@@ -163,13 +163,13 @@ impl From<isize> for RegisterNumber {
 impl Display for RegisterNumber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RegisterNumber::Natural(n) => write!(f, "r{}", *n),
-            RegisterNumber::Negative(n) => write!(f, "r-{}", *n),
+            Self::Natural(n) => write!(f, "r{}", *n),
+            Self::Negative(n) => write!(f, "r-{}", *n),
         }
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Memory {
     nat_registers: Vec<Register>,
     neg_registers: Vec<Register>,
@@ -179,8 +179,8 @@ impl Memory {
     /// Create a new memory struct from a slice of registers (where the 0th element of the slice
     /// is the 0th register, etc.)
     #[must_use]
-    pub fn new_from_slice(registers: &[Register]) -> Memory {
-        Memory { nat_registers: Vec::from(registers), neg_registers: Vec::new() }
+    pub fn new_from_slice(registers: &[Register]) -> Self {
+        Self { nat_registers: Vec::from(registers), neg_registers: Vec::new() }
     }
 
     /// Initialise new registers with the value 0 up to the given register number.
@@ -222,11 +222,11 @@ impl Memory {
             },
         }
     }
-    
+
     /// Decrement the given register by 1.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// * This function assumes that the register isn't zero!
     pub fn dec(&mut self, register_number: RegisterNumber) {
         match register_number {
@@ -272,9 +272,9 @@ impl Memory {
     }
 
     /// Get the current value of all (natural) registers as u128 numbers.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// * If the value of any register is larger than 2^128 - 1, then this will panic!
     #[must_use]
     pub fn get_nat_registers_as_u128(&self) -> Vec<u128> {
@@ -286,9 +286,9 @@ impl Memory {
     }
 
     /// Get the current value of a register as a u128.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// * If the value of any register is larger than 2^128 - 1, then this will panic!
     #[must_use]
     pub fn get_register(&self, register_number: RegisterNumber) -> String {
@@ -311,7 +311,7 @@ impl Memory {
 
 impl FromIterator<Register> for Memory {
     fn from_iter<T: IntoIterator<Item = Register>>(iter: T) -> Self {
-        Memory { nat_registers: Vec::from_iter(iter), neg_registers: Vec::new() }
+        Self { nat_registers: Vec::from_iter(iter), neg_registers: Vec::new() }
     }
 }
 
