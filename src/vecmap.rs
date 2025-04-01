@@ -31,11 +31,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 //! us_presidents.update(42, String::from("Bill Clinton"));
 //! assert_eq!("Bill Clinton", us_presidents.get(&42).unwrap());
 //! ```
+
+/// A list map implemented using [`Vec`].
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct VecMap<K, V> {
-    pub vec: Vec<(K, V)>
+    vec: Vec<(K, V)>
 }
 impl<K, V> VecMap<K, V> {
+    /// Create a [`VecMap`] from a slice of `(key, value)`.
+    /// 
+    /// <div class="warning">If the slice contains duplicate entries of the key, then this will be
+    /// copied without an error!</div>
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use frust::vecmap::VecMap;
+    /// let pairs: Vec<(usize, bool)> = vec![(0, true), (5, false), (6, false)];
+    /// let map: VecMap<usize, bool> = VecMap::from_slice(pairs.as_slice());
+    /// assert_eq!(map.get(&0), Some(&true));
+    /// ```
     #[must_use]
     // The use_self has a false positive here. TODO: file bug to the clippy devs.
     #[expect(clippy::use_self)]
@@ -47,6 +62,17 @@ impl<K, V> VecMap<K, V> {
         Self { vec: Vec::from(tuples) }
     }
 
+    /// Get the value corresponding to the given `key`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use frust::vecmap::VecMap;
+    /// let pairs: Vec<(usize, bool)> = vec![(0, true), (5, false), (6, false), (0, false)];
+    /// let map: VecMap<usize, bool> = VecMap::from_slice(pairs.as_slice());
+    /// assert_eq!(map.get(&0), Some(&true));
+    /// assert_eq!(map.get(&2), None);
+    /// ```
     #[must_use]
     pub fn get(&self, key: &K) -> Option<&V>
     where
@@ -55,6 +81,7 @@ impl<K, V> VecMap<K, V> {
         self.position(key).map(|i| &self.vec[i].1)
     }
 
+    /// Retrieve the position of the `key`.
     #[must_use]
     fn position(&self, key: &K) -> Option<usize>
     where
@@ -67,6 +94,22 @@ impl<K, V> VecMap<K, V> {
         }
         None
     }
+    
+    /// Set the key to a value. If the key already exists in the map, update the corresponding
+    /// value. Otherwise, add it to the map.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use frust::vecmap::VecMap;
+    /// let pairs: Vec<(usize, bool)> = vec![(0, true), (5, false), (6, false)];
+    /// let mut map: VecMap<usize, bool> = VecMap::from_slice(pairs.as_slice());
+    /// map.update(5, true);
+    /// map.update(2, true);
+    /// 
+    /// assert_eq!(map.get(&5), Some(&true));
+    /// assert_eq!(map.get(&2), Some(&true));
+    /// ```
     pub fn update(&mut self, key: K, value: V)
     where
         K: PartialEq
@@ -76,21 +119,38 @@ impl<K, V> VecMap<K, V> {
             None => self.vec.push((key, value)),
         }
     }
-    pub fn update_with_fn(&mut self, key: K, identity: &V, func: impl FnOnce(&V) -> V)
+    
+    /// If the key exists in the map, apply the function to the value. Otherwise, add the key to the
+    /// map with the value resulting from applying the function to the value given by `default`.
+    /// 
+    /// # Example
+    /// ```rust
+    /// use frust::vecmap::VecMap;
+    /// let pairs: Vec<(usize, bool)> = vec![(0, true), (5, false), (6, false)];
+    /// let mut map: VecMap<usize, bool> = VecMap::from_slice(pairs.as_slice());
+    /// map.update_with_fn(0, &false, |b| b ^ true);
+    /// map.update_with_fn(2, &false, |b| b ^ true);
+    ///
+    /// assert_eq!(map.get(&0), Some(&false));
+    /// assert_eq!(map.get(&2), Some(&true));
+    /// ```
+    pub fn update_with_fn(&mut self, key: K, default: &V, func: impl FnOnce(&V) -> V)
     where
         K: PartialEq
     {
         match self.position(&key) {
             Some(i) => self.vec[i].1 = func(&self.vec[i].1),
-            None => self.update(key, func(identity)),
+            None => self.update(key, func(default)),
         }
     }
 
+    /// Returns a vec of references to the keys.
     #[must_use]
     pub fn keys(&self) -> Vec<&K> {
         self.vec.iter().map(|tuple| &tuple.0).collect()
     }
 
+    /// Returns a vec of references to the values.
     #[must_use]
     pub fn values(&self) -> Vec<&V> {
         self.vec.iter().map(|tuple| &tuple.1).collect()
